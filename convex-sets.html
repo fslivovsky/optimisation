@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convex sets — interactive lecture tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F4EF; --panel:#FFFFFF; --ink:#1B2233; --muted:#5B6373; --line:#DAD9D2;
+  --grid:#E6E7EB; --axis:#C9CCD3;
+  --set:#3D6FC7; --set-alpha:.28; --hull:#8358C6; --hull-fill:rgba(131,88,198,.10);
+  --ok:#1E8A5A; --bad:#D23A2E; --neutral:#8A909C;
+  --btn:#EDECE6; --btn-hover:#E2E1DA; --btn-active:#1B2233; --btn-active-ink:#FFFFFF;
+  --focus:#3D6FC7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171E; --panel:#1B1F28; --ink:#EAECF1; --muted:#98A0B0; --line:#2A3040;
+    --grid:#232834; --axis:#3A4152;
+    --set:#6C9BE8; --set-alpha:.30; --hull:#B18CF0; --hull-fill:rgba(177,140,240,.12);
+    --ok:#3FBF85; --bad:#F0655A; --neutral:#6B7382;
+    --btn:#262B36; --btn-hover:#303645; --btn-active:#EAECF1; --btn-active-ink:#14171E;
+    --focus:#6C9BE8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171E; --panel:#1B1F28; --ink:#EAECF1; --muted:#98A0B0; --line:#2A3040;
+  --grid:#232834; --axis:#3A4152;
+  --set:#6C9BE8; --set-alpha:.30; --hull:#B18CF0; --hull-fill:rgba(177,140,240,.12);
+  --ok:#3FBF85; --bad:#F0655A; --neutral:#6B7382;
+  --btn:#262B36; --btn-hover:#303645; --btn-active:#EAECF1; --btn-active-ink:#14171E;
+  --focus:#6C9BE8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:Manrope,"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.math{font-family:"STIX Two Text","Times New Roman",Georgia,serif}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;padding:16px;max-width:1300px;margin:0 auto;align-items:start}
+@media (max-width:820px){.app{grid-template-columns:1fr;gap:16px;padding:12px}}
+@media (min-width:821px){aside{max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}}
+@media (max-height:640px) and (min-width:821px){.def{font-size:17px}.def.center{font-size:21px}aside{gap:14px}.verdict .word{font-size:24px}}
+.stage{display:flex;justify-content:center;align-items:flex-start;position:sticky;top:16px}
+canvas{display:block;background:var(--panel);border:1px solid var(--line);border-radius:6px;touch-action:none;cursor:crosshair;max-width:100%}
+canvas.dragging{cursor:grabbing}
+aside{display:flex;flex-direction:column;gap:22px;min-width:0}
+.def{margin:0;font-size:21px;line-height:1.5}
+.def b{font-weight:600}
+.def.center{text-align:center;font-size:26px;margin-top:4px}
+h2{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 8px;letter-spacing:.01em}
+.shapes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+button{font:inherit;font-weight:600;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--btn);color:var(--ink);cursor:pointer;text-align:center;line-height:1.2}
+button:hover{background:var(--btn-hover)}
+button[aria-pressed="true"]{background:var(--btn-active);color:var(--btn-active-ink);border-color:var(--btn-active)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.verdict{border-left:4px solid var(--neutral);padding:6px 0 6px 14px}
+.verdict.ok{border-color:var(--ok)}
+.verdict.bad{border-color:var(--bad)}
+.verdict .word{font-size:30px;font-weight:700;line-height:1.1;margin:0 0 6px}
+.verdict.ok .word{color:var(--ok)}
+.verdict.bad .word{color:var(--bad)}
+.verdict p{margin:0;color:var(--muted);font-size:14px}
+.readouts{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;font-size:15px;align-items:baseline}
+.readouts .name{font-size:19px}
+.readouts .st{font-size:13px;font-weight:600}
+.st.in{color:var(--ok)}.st.out{color:var(--bad)}
+.seg{margin:10px 0 0;font-size:14px;font-weight:600}
+.seg.ok{color:var(--ok)}.seg.bad{color:var(--bad)}.seg.neutral{color:var(--muted)}
+.lam{display:flex;align-items:center;gap:12px;margin-top:10px}
+.lam .math{font-size:19px;min-width:76px}
+input[type=range]{flex:1;accent-color:var(--set)}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.row button{flex:1 1 auto}
+.custom-tools{display:none}
+.custom-tools.on{display:flex}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+kbd{font:inherit;font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:0 5px;background:var(--panel)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage"><canvas id="c" aria-label="Interactive plane showing a set and a segment between two draggable points"></canvas></div>
+  <aside>
+    <div>
+      <p class="def math">A set <i>C</i> ⊆ ℝ² is <b>convex</b> if for all <i>x</i>, <i>y</i> ∈ <i>C</i> and every <i>λ</i> ∈ [0, 1],</p>
+      <p class="def math center">(1 − <i>λ</i>)<i>x</i> + <i>λy</i> ∈ <i>C</i>.</p>
+    </div>
+
+    <section>
+      <h2>Set</h2>
+      <div class="shapes" id="shapes" role="group" aria-label="Choose a set"></div>
+      <div class="row custom-tools" id="customTools" style="margin-top:8px">
+        <button id="undoBtn">Undo last vertex</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+      <p class="hint" id="customHint" style="display:none;margin-top:8px">Click empty space to add a vertex, drag a vertex to move it.</p>
+    </section>
+
+    <section class="verdict" id="verdict">
+      <div class="word" id="vword">—</div>
+      <p id="vnote"></p>
+    </section>
+
+    <section>
+      <h2>Segment test</h2>
+      <div class="readouts">
+        <span class="name math"><i>x</i></span><span id="xc" class="math">—</span><span id="xs" class="st"></span>
+        <span class="name math"><i>y</i></span><span id="yc" class="math">—</span><span id="ys" class="st"></span>
+        <span class="name math"><i>z</i></span><span id="zc" class="math">—</span><span id="zs" class="st"></span>
+      </div>
+      <div class="lam">
+        <span class="math"><i>λ</i> = <span id="lamv">0.50</span></span>
+        <input type="range" id="lam" min="0" max="1" step="0.01" value="0.5" aria-label="lambda">
+      </div>
+      <p class="seg neutral" id="segmsg"></p>
+    </section>
+
+    <section class="row">
+      <button id="witnessBtn">Find a witness</button>
+      <button id="shuffleBtn">Shuffle x and y</button>
+      <button id="hullBtn" aria-pressed="false">Convex hull</button>
+      <button id="gridBtn" aria-pressed="true">Grid</button>
+    </section>
+
+    <p class="hint">Keys: <kbd>1</kbd>–<kbd>9</kbd> choose a set, <kbd>F</kbd> find a witness, <kbd>S</kbd> shuffle, <kbd>H</kbd> hull, <kbd>G</kbd> grid, <kbd>⌫</kbd> undo a vertex.</p>
+  </aside>
+</div>
+
+<script>
+(() => {
+const V = 5;                                   // view is [-5,5]²
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const off = document.createElement('canvas');
+const octx = off.getContext('2d');
+let W = 600, dpr = 1;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const toPx = p => [(p[0] + V) / (2 * V) * W, (V - p[1]) / (2 * V) * W];
+const toMath = (px, py) => [px / W * 2 * V - V, V - py / W * 2 * V];
+const sc = r => r / (2 * V) * W;
+
+// ---------- geometry ----------
+function inPoly(pts, x, y) {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+function polyConvex(pts) {
+  const n = pts.length; if (n < 3) return null;
+  let sign = 0, turn = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n], c = pts[(i + 2) % n];
+    const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+    const cr = ux * vy - uy * vx, s = Math.sign(cr);
+    if (s) { if (sign && s !== sign) return false; sign = s; }
+    turn += Math.atan2(cr, ux * vx + uy * vy);
+  }
+  return Math.abs(Math.abs(turn) - 2 * Math.PI) < 1e-6;
+}
+function hull(pts) {
+  pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = []; for (const p of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  const up = []; for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  up.pop(); lo.pop(); return lo.concat(up);
+}
+function clipRect(f) {                          // rectangle ∩ {f ≤ 0}
+  const poly = [[-V, -V], [V, -V], [V, V], [-V, V]], out = [];
+  for (let i = 0; i < 4; i++) {
+    const P = poly[i], Q = poly[(i + 1) % 4], fp = f(P), fq = f(Q);
+    if (fp <= 0) out.push(P);
+    if ((fp <= 0) !== (fq <= 0)) { const t = fp / (fp - fq); out.push([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])]); }
+  }
+  return out;
+}
+function gridHull(inside) {
+  const n = 250, step = 2 * V / n, pts = [];
+  for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) { const x = -V + i * step, y = -V + j * step; if (inside(x, y)) pts.push([x, y]); }
+  const h = hull(pts); if (h.length < 3) return h;
+  // support function: for each direction u, slide the line <u,p> = v outward until it stops touching the set
+  const out = [], M = 360, S = 400, T = V * Math.SQRT2;
+  const touch = (ux, uy, v) => {
+    let sx = 0, sy = 0, c = 0;
+    for (let i = 0; i <= S; i++) { const t = -T + 2 * T * i / S, x = v * ux - t * uy, y = v * uy + t * ux; if (Math.abs(x) <= V && Math.abs(y) <= V && inside(x, y)) { sx += x; sy += y; c++; } }
+    return c ? [sx / c, sy / c] : null;
+  };
+  for (let k = 0; k < M; k++) {
+    const a = 2 * Math.PI * k / M, ux = Math.cos(a), uy = Math.sin(a);
+    let lo = -Infinity; for (const p of h) lo = Math.max(lo, p[0] * ux + p[1] * uy);
+    let hi = lo + 2 * step, pt = touch(ux, uy, lo);
+    for (let it = 0; it < 22; it++) { const m = (lo + hi) / 2, q = touch(ux, uy, m); if (q) { lo = m; pt = q; } else hi = m; }
+    if (pt) out.push(pt);
+  }
+  return hull(out);
+}
+function segmentGaps(x, y, inside) {             // intervals of t where the segment is outside
+  const N = 600, gaps = []; let cur = null;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, px = x[0] + t * (y[0] - x[0]), py = x[1] + t * (y[1] - x[1]);
+    if (!inside(px, py)) { if (!cur) cur = [t, t]; cur[1] = t; }
+    else if (cur) { gaps.push(cur); cur = null; }
+  }
+  if (cur) gaps.push(cur);
+  return gaps;
+}
+
+// ---------- drawing helpers ----------
+function circlePath(c, k, r) { const [cx, cy] = toPx(k); c.beginPath(); c.arc(cx, cy, sc(r), 0, Math.PI * 2); }
+function polyPath(c, pts) { c.beginPath(); pts.forEach((p, i) => { const [a, b] = toPx(p); i ? c.lineTo(a, b) : c.moveTo(a, b); }); c.closePath(); }
+function fillAlpha(c) { c.save(); c.globalAlpha = parseFloat(css('--set-alpha')); c.fillStyle = css('--set'); c.fill(); c.restore(); }
+function fillEO(c) { c.save(); c.globalAlpha = parseFloat(css('--set-alpha')); c.fillStyle = css('--set'); c.fill('evenodd'); c.restore(); }
+function strokeSet(c) { c.strokeStyle = css('--set'); c.lineWidth = 2; c.stroke(); }
+function clipTo(pathFn, outside, fn) {
+  ctx.save(); pathFn(); if (outside) { ctx.rect(0, 0, W, W); ctx.clip('evenodd'); } else ctx.clip(); fn(); ctx.restore();
+}
+function composite(ops) {                       // ops: [{c,r,mode}] painted opaque offscreen, then blended
+  octx.clearRect(0, 0, W, W); octx.fillStyle = css('--set');
+  ops.forEach(o => { octx.globalCompositeOperation = o.mode; circlePath(octx, o.c, o.r); octx.fill(); });
+  octx.globalCompositeOperation = 'source-over';
+  ctx.save(); ctx.globalAlpha = parseFloat(css('--set-alpha')); ctx.drawImage(off, 0, 0); ctx.restore();
+}
+
+// ---------- the sets ----------
+const star = []; for (let k = 0; k < 10; k++) { const a = Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 1.45 : 3.5; star.push([r * Math.cos(a), r * Math.sin(a)]); }
+const halfF = p => p[1] - 0.5 * p[0] - 1;
+const halfPoly = clipRect(halfF);
+const A1 = [-1.2, 0], B1 = [1.2, 0], R1 = 2.8;   // intersection
+const A2 = [-2.2, .3], B2 = [2.2, -.3], R2 = 1.7; // union
+const A3 = [-.6, 0], R3 = 3.4, B3 = [1.4, 0], RB3 = 2.7; // crescent
+const d2 = (p, c) => (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2;
+
+const shapes = {
+  disk: { name: 'Disk', convex: true, x0: [-2, .8], y0: [1.5, -1.2],
+    note: 'Any chord between two points of a disk stays inside the disk.',
+    inside: (x, y) => x * x + y * y <= 9,
+    paint() { circlePath(ctx, [0, 0], 3); fillAlpha(ctx); strokeSet(ctx); },
+    hullPts: () => gridHull(shapes.disk.inside) },
+  square: { name: 'Square', convex: true, x0: [-2.5, 2.5], y0: [2.5, -2.5],
+    note: 'A polygon is convex exactly when every interior angle is at most 180°.',
+    inside: (x, y) => Math.abs(x) <= 3 && Math.abs(y) <= 3,
+    paint() { polyPath(ctx, [[-3, -3], [3, -3], [3, 3], [-3, 3]]); fillAlpha(ctx); strokeSet(ctx); },
+    hullPts: () => [[-3, -3], [3, -3], [3, 3], [-3, 3]] },
+  half: { name: 'Half-plane', convex: true, x0: [-3, -1], y0: [3, 1.5],
+    note: 'Half-planes are the building blocks: every closed convex set is an intersection of half-planes.',
+    inside: (x, y) => halfF([x, y]) <= 0,
+    paint() { polyPath(ctx, halfPoly); fillAlpha(ctx); ctx.beginPath(); const a = toPx([-V, -0.5 * V + 1]), b = toPx([V, 0.5 * V + 1]); ctx.moveTo(...a); ctx.lineTo(...b); strokeSet(ctx); },
+    hullPts: () => halfPoly },
+  inter: { name: 'Disk ∩ disk', convex: true, x0: [-1, 1.5], y0: [1, -1.5],
+    note: 'The intersection of convex sets is always convex.',
+    inside: (x, y) => d2([x, y], A1) <= R1 * R1 && d2([x, y], B1) <= R1 * R1,
+    paint() {
+      composite([{ c: A1, r: R1, mode: 'source-over' }, { c: B1, r: R1, mode: 'source-in' }]);
+      clipTo(() => circlePath(ctx, B1, R1), false, () => { circlePath(ctx, A1, R1); strokeSet(ctx); });
+      clipTo(() => circlePath(ctx, A1, R1), false, () => { circlePath(ctx, B1, R1); strokeSet(ctx); });
+    },
+    hullPts: () => gridHull(shapes.inter.inside) },
+  union: { name: 'Disk ∪ disk', convex: false, x0: [-2.5, .5], y0: [2.5, -.5],
+    note: 'A union of convex sets is usually not convex: segments fall into the gap between the pieces.',
+    inside: (x, y) => d2([x, y], A2) <= R2 * R2 || d2([x, y], B2) <= R2 * R2,
+    paint() {
+      composite([{ c: A2, r: R2, mode: 'source-over' }, { c: B2, r: R2, mode: 'source-over' }]);
+      clipTo(() => circlePath(ctx, B2, R2), true, () => { circlePath(ctx, A2, R2); strokeSet(ctx); });
+      clipTo(() => circlePath(ctx, A2, R2), true, () => { circlePath(ctx, B2, R2); strokeSet(ctx); });
+    },
+    hullPts: () => gridHull(shapes.union.inside) },
+  annulus: { name: 'Annulus', convex: false, x0: [-2.4, .6], y0: [2.4, .6],
+    note: 'Any chord that crosses the hole leaves the set.',
+    inside: (x, y) => { const r = x * x + y * y; return r >= 1.4 * 1.4 && r <= 3.4 * 3.4; },
+    paint() { circlePath(ctx, [0, 0], 3.4); ctx.arc(...toPx([0, 0]), sc(1.4), 0, Math.PI * 2, true); fillEO(ctx); strokeSet(ctx); },
+    hullPts: () => gridHull(shapes.annulus.inside) },
+  crescent: { name: 'Crescent', convex: false, x0: [-1, 2.8], y0: [-1, -2.8],
+    note: 'Removing a convex set from a convex set can destroy convexity.',
+    inside: (x, y) => d2([x, y], A3) <= R3 * R3 && d2([x, y], B3) > RB3 * RB3,
+    paint() {
+      composite([{ c: A3, r: R3, mode: 'source-over' }, { c: B3, r: RB3, mode: 'destination-out' }]);
+      clipTo(() => circlePath(ctx, B3, RB3), true, () => { circlePath(ctx, A3, R3); strokeSet(ctx); });
+      clipTo(() => circlePath(ctx, A3, R3), false, () => { circlePath(ctx, B3, RB3); strokeSet(ctx); });
+    },
+    hullPts: () => gridHull(shapes.crescent.inside) },
+  star: { name: 'Star', convex: false, x0: [-3, .97], y0: [0, 3.15],
+    note: 'Every inward (reflex) corner is a witness against convexity.',
+    inside: (x, y) => inPoly(star, x, y),
+    paint() { polyPath(ctx, star); fillAlpha(ctx); strokeSet(ctx); },
+    hullPts: () => hull(star) },
+  custom: { name: 'Draw your own', convex: null, x0: [-2, 2.5], y0: [2.5, -1.5],
+    inside: (x, y) => inPoly(state.custom, x, y),
+    paint() {
+      const pts = state.custom;
+      if (pts.length >= 3) { polyPath(ctx, pts); fillAlpha(ctx); strokeSet(ctx); }
+      else if (pts.length === 2) { polyPath(ctx, pts); strokeSet(ctx); }
+      const ink = css('--set');
+      pts.forEach(p => { const [a, b] = toPx(p); ctx.beginPath(); ctx.arc(a, b, 5, 0, Math.PI * 2); ctx.fillStyle = css('--panel'); ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.stroke(); });
+    },
+    hullPts: () => hull(state.custom) },
+};
+const order = ['disk', 'square', 'half', 'inter', 'union', 'annulus', 'crescent', 'star', 'custom'];
+
+// ---------- state ----------
+const state = {
+  key: 'annulus', X: [-2.4, .6], Y: [2.4, .6], lam: .5, hull: false, grid: true,
+  custom: [[-3, -3], [3, -3], [3, 0], [0, 0], [0, 3], [-3, 3]], hullCache: null, drag: null,
+};
+const shape = () => shapes[state.key];
+const inside = (x, y) => shape().inside(x, y);
+
+// ---------- UI wiring ----------
+const shapesEl = document.getElementById('shapes');
+order.forEach((k, i) => {
+  const b = document.createElement('button'); b.textContent = shapes[k].name; b.dataset.key = k;
+  b.setAttribute('aria-pressed', String(k === state.key));
+  b.addEventListener('click', () => setShape(k)); shapesEl.appendChild(b);
+});
+function setShape(k) {
+  state.key = k; state.X = shapes[k].x0.slice(); state.Y = shapes[k].y0.slice(); state.hullCache = null;
+  shapesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.key === k)));
+  const isCustom = k === 'custom';
+  document.getElementById('customTools').classList.toggle('on', isCustom);
+  document.getElementById('customHint').style.display = isCustom ? 'block' : 'none';
+  update();
+}
+document.getElementById('lam').addEventListener('input', e => { state.lam = +e.target.value; update(); });
+document.getElementById('hullBtn').addEventListener('click', toggleHull);
+document.getElementById('gridBtn').addEventListener('click', toggleGrid);
+document.getElementById('witnessBtn').addEventListener('click', findWitness);
+document.getElementById('shuffleBtn').addEventListener('click', shuffle);
+document.getElementById('undoBtn').addEventListener('click', () => { state.custom.pop(); state.hullCache = null; update(); });
+document.getElementById('clearBtn').addEventListener('click', () => { state.custom = []; state.hullCache = null; update(); });
+function toggleHull() { state.hull = !state.hull; document.getElementById('hullBtn').setAttribute('aria-pressed', String(state.hull)); update(); }
+function toggleGrid() { state.grid = !state.grid; document.getElementById('gridBtn').setAttribute('aria-pressed', String(state.grid)); update(); }
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= order.length) return setShape(order[n - 1]);
+  const k = e.key.toLowerCase();
+  if (k === 'f') findWitness(); else if (k === 's') shuffle(); else if (k === 'h') toggleHull(); else if (k === 'g') toggleGrid();
+  else if (e.key === 'Backspace' && state.key === 'custom') { e.preventDefault(); state.custom.pop(); state.hullCache = null; update(); }
+});
+
+// ---------- witnesses ----------
+function randomInside() {
+  for (let k = 0; k < 5000; k++) { const p = [(Math.random() * 2 - 1) * V * .96, (Math.random() * 2 - 1) * V * .96]; if (inside(p[0], p[1])) return p; }
+  return null;
+}
+function shuffle() { const a = randomInside(), b = randomInside(); if (a && b) animateTo(a, b); }
+function findWitness() {
+  let best = null, bestLen = 0, found = 0;
+  for (let k = 0; k < 4000 && found < 25; k++) {
+    const a = randomInside(), b = randomInside(); if (!a || !b) break;
+    const gaps = segmentGaps(a, b, inside); if (!gaps.length) continue;
+    found++; const len = gaps.reduce((s, g) => s + g[1] - g[0], 0) * Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len > bestLen) { bestLen = len; best = [a, b]; }
+  }
+  const msg = document.getElementById('segmsg');
+  if (best) animateTo(best[0], best[1]);
+  else { update(); msg.textContent = 'No witness found in 4000 random pairs — consistent with convexity.'; msg.className = 'seg neutral'; }
+}
+let anim = null;
+function animateTo(a, b) {
+  if (reduced) { state.X = a; state.Y = b; update(); return; }
+  const x0 = state.X.slice(), y0 = state.Y.slice(), t0 = performance.now(), D = 650;
+  cancelAnimationFrame(anim);
+  const step = now => {
+    const t = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - t, 3);
+    state.X = [x0[0] + e * (a[0] - x0[0]), x0[1] + e * (a[1] - x0[1])];
+    state.Y = [y0[0] + e * (b[0] - y0[0]), y0[1] + e * (b[1] - y0[1])];
+    update(); if (t < 1) anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+
+// ---------- pointer interaction ----------
+let downAt = null;
+canvas.addEventListener('pointerdown', e => {
+  const r = canvas.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width), py = (e.clientY - r.top) * (W / r.height);
+  downAt = [px, py];
+  const hit = (p, rad) => { const [a, b] = toPx(p); return Math.hypot(a - px, b - py) <= rad; };
+  if (hit(state.X, 16)) state.drag = { kind: 'X' };
+  else if (hit(state.Y, 16)) state.drag = { kind: 'Y' };
+  else if (state.key === 'custom') { const i = state.custom.findIndex(p => hit(p, 12)); if (i >= 0) state.drag = { kind: 'V', i }; }
+  if (state.drag) { canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging'); }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!state.drag) return;
+  const r = canvas.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width), py = (e.clientY - r.top) * (W / r.height);
+  const m = toMath(px, py).map(v => Math.max(-V, Math.min(V, v)));
+  if (state.drag.kind === 'X') state.X = m; else if (state.drag.kind === 'Y') state.Y = m;
+  else { state.custom[state.drag.i] = m; state.hullCache = null; }
+  update();
+});
+canvas.addEventListener('pointerup', e => {
+  const r = canvas.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width), py = (e.clientY - r.top) * (W / r.height);
+  if (!state.drag && state.key === 'custom' && downAt && Math.hypot(px - downAt[0], py - downAt[1]) < 4) {
+    state.custom.push(toMath(px, py)); state.hullCache = null; update();
+  }
+  state.drag = null; downAt = null; canvas.classList.remove('dragging');
+});
+canvas.addEventListener('pointercancel', () => { state.drag = null; canvas.classList.remove('dragging'); });
+
+// ---------- render ----------
+function resize() {
+  const stage = canvas.parentElement.getBoundingClientRect();
+  const size = Math.max(240, Math.min(stage.width, window.innerWidth > 820 ? window.innerHeight - 32 : 1e9));
+  dpr = window.devicePixelRatio || 1; W = Math.round(size);
+  canvas.width = off.width = Math.round(W * dpr); canvas.height = off.height = Math.round(W * dpr);
+  canvas.style.width = canvas.style.height = W + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  update();
+}
+new ResizeObserver(resize).observe(canvas.parentElement);
+window.addEventListener('resize', resize);
+
+function drawPoint(p, label, ok, dx, dy) {
+  const [a, b] = toPx(p);
+  ctx.beginPath(); ctx.arc(a, b, 7, 0, Math.PI * 2);
+  ctx.fillStyle = ok ? css('--ink') : css('--panel'); ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = ok ? css('--panel') : css('--bad'); ctx.stroke();
+  ctx.font = 'italic 600 20px "STIX Two Text", "Times New Roman", serif'; ctx.fillStyle = css('--ink');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, a + dx, b + dy);
+}
+
+function update() {
+  const s = shape();
+  ctx.clearRect(0, 0, W, W);
+  // grid + axes
+  if (state.grid) {
+    ctx.lineWidth = 1; ctx.strokeStyle = css('--grid'); ctx.beginPath();
+    for (let i = -V; i <= V; i++) { const [a] = toPx([i, 0]); const [, b] = toPx([0, i]); ctx.moveTo(a, 0); ctx.lineTo(a, W); ctx.moveTo(0, b); ctx.lineTo(W, b); }
+    ctx.stroke();
+    ctx.strokeStyle = css('--axis'); ctx.beginPath(); const o = toPx([0, 0]); ctx.moveTo(o[0], 0); ctx.lineTo(o[0], W); ctx.moveTo(0, o[1]); ctx.lineTo(W, o[1]); ctx.stroke();
+  }
+  // convex hull
+  if (state.hull) {
+    if (!state.hullCache) state.hullCache = s.hullPts();
+    const h = state.hullCache;
+    if (h.length >= 3) { polyPath(ctx, h); ctx.fillStyle = css('--hull-fill'); ctx.fill(); ctx.setLineDash([7, 5]); ctx.strokeStyle = css('--hull'); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
+  }
+  // the set
+  s.paint();
+
+  // segment
+  const X = state.X, Y = state.Y;
+  const xin = inside(...X), yin = inside(...Y), both = xin && yin;
+  const gaps = both ? segmentGaps(X, Y, inside) : [];
+  const px = toPx(X), py = toPx(Y);
+  const at = t => [px[0] + t * (py[0] - px[0]), px[1] + t * (py[1] - px[1])];
+  ctx.lineCap = 'round'; ctx.lineWidth = 3;
+  ctx.strokeStyle = both ? css('--ink') : css('--neutral');
+  if (!both) ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(...px); ctx.lineTo(...py); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = css('--bad'); ctx.lineWidth = 5;
+  gaps.forEach(([t0, t1]) => { ctx.beginPath(); ctx.moveTo(...at(t0)); ctx.lineTo(...at(t1)); ctx.stroke(); });
+
+  // z = (1-λ)x + λy
+  const Z = [(1 - state.lam) * X[0] + state.lam * Y[0], (1 - state.lam) * X[1] + state.lam * Y[1]];
+  const zin = inside(...Z);
+  const pz = toPx(Z);
+  ctx.beginPath(); ctx.arc(pz[0], pz[1], 5, 0, Math.PI * 2);
+  ctx.fillStyle = zin ? css('--ok') : css('--bad'); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = css('--panel'); ctx.stroke();
+  // perpendicular offset for z label
+  const dxs = py[0] - px[0], dys = py[1] - px[1], L = Math.hypot(dxs, dys) || 1, nx = -dys / L, ny = dxs / L;
+  ctx.font = 'italic 600 18px "STIX Two Text", "Times New Roman", serif'; ctx.fillStyle = css('--ink');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('z', pz[0] + nx * 18, pz[1] + ny * 18);
+
+  drawPoint(X, 'x', xin, -nx * 20, -ny * 20);
+  drawPoint(Y, 'y', yin, -nx * 20, -ny * 20);
+
+  // ---- sidebar ----
+  const fmt = p => `(${p[0].toFixed(1)}, ${p[1].toFixed(1)})`;
+  const setRead = (id, p, ok) => { document.getElementById(id + 'c').textContent = fmt(p); const e = document.getElementById(id + 's'); e.textContent = ok ? 'in C' : 'outside C'; e.className = 'st ' + (ok ? 'in' : 'out'); };
+  setRead('x', X, xin); setRead('y', Y, yin); setRead('z', Z, zin);
+  document.getElementById('lamv').textContent = state.lam.toFixed(2);
+
+  const msg = document.getElementById('segmsg');
+  if (!both) { msg.textContent = `${!xin ? 'x' : 'y'} is not in the set — the definition only tests pairs of points that lie in C.`; msg.className = 'seg neutral'; }
+  else if (gaps.length) { msg.textContent = 'The segment leaves the set: this pair x, y is a witness that C is not convex.'; msg.className = 'seg bad'; }
+  else { msg.textContent = s.convex === false || (s.convex === null && polyConvex(state.custom) === false) ? 'This segment stays inside — but one pair is not a proof. Try another, or find a witness.' : 'The segment stays inside the set.'; msg.className = 'seg ok'; }
+
+  const verdict = document.getElementById('verdict'), vw = document.getElementById('vword'), vn = document.getElementById('vnote');
+  let convex = s.convex, note = s.note;
+  if (s.convex === null) {
+    convex = polyConvex(state.custom);
+    if (convex === null) { vw.textContent = 'Draw a polygon'; vn.textContent = 'Click at least three points on the plane.'; verdict.className = 'verdict'; return; }
+    note = convex ? 'All turns of the boundary go the same way, so no chord can escape.' : 'Somewhere the boundary turns inward. A chord across that corner leaves the polygon.';
+  }
+  vw.textContent = convex ? 'Convex' : 'Not convex';
+  vn.textContent = note; verdict.className = 'verdict ' + (convex ? 'ok' : 'bad');
+}
+
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', update);
+document.fonts && document.fonts.ready.then(update);
+setShape(state.key);
+resize();
+})();
+</script>
+</body>
+</html>
