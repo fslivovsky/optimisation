@@ -182,7 +182,7 @@ function arrowMarker(svg,id,color){const d=el('defs',{},svg);const mk=el('marker
   const svg=document.getElementById('poly');const W=760,H=560,S=54;
   const B=makeBoard(svg,W,H,S);arrowMarker(svg,'aHead','var(--accent)');
   const defaults=()=>[{a:[1,1],b:6},{a:[-1,1],b:3},{a:[0,-1],b:2},{a:[-1,-0.5],b:4},{a:[1,-2],b:5}].map(c=>{const n2=c.a[0]**2+c.a[1]**2;return {a:c.a.slice(),b:c.b,p:[c.a[0]*c.b/n2,c.a[1]*c.b/n2]};});
-  let cons=defaults();let hot=-1,drag=null;
+  let cons=defaults();let hot=-1,drag=null,lastFormula='';
   const gHalf=el('g',{},svg),gFill=el('g',{},svg),gLines=el('g',{},svg),gArr=el('g',{},svg),gVerts=el('g',{},svg),gLabel=el('g',{},svg);
   const formula=document.getElementById('polyFormula'),status=document.getElementById('polyStatus'),chk=document.getElementById('polyVerts');
   function render(){
@@ -207,10 +207,10 @@ function arrowMarker(svg,id,color){const d=el('defs',{},svg);const mk=el('marker
     if(chk.checked&&poly.length>=3)poly.forEach(v=>{if(Math.abs(v[0])<59&&Math.abs(v[1])<59){const Q=B.toS(v[0],v[1]);el('circle',{cx:Q[0],cy:Q[1],r:5,fill:'var(--panel)',stroke:'var(--feasible)','stroke-width':2},gVerts);}});
     // formula
     let h='<span class="brace"><i>P</i> = { (<i>x</i>, <i>y</i>) :</span>';
-    cons.forEach((c,i)=>{h+='<div class="row'+(i===hot?' hot':'')+'" data-i="'+i+'"><span class="tag"></span><span>'+ineq(c.a,c.b)+'</span><button class="x" data-i="'+i+'" aria-label="Remove halfspace '+(i+1)+'">×</button></div>';});
-    h+='<span class="brace">}</span>';formula.innerHTML=h;
-    formula.querySelectorAll('.row').forEach(r=>{r.addEventListener('pointerenter',()=>{hot=+r.dataset.i;render();});});
-    formula.querySelectorAll('.x').forEach(b=>{b.onclick=()=>{cons.splice(+b.dataset.i,1);hot=-1;render();};});
+    cons.forEach((c,i)=>{h+='<div class="row" data-i="'+i+'"><span class="tag"></span><span>'+ineq(c.a,c.b)+'</span><button class="x" data-i="'+i+'" aria-label="Remove halfspace '+(i+1)+'">×</button></div>';});
+    h+='<span class="brace">}</span>';
+    if(h!==lastFormula){formula.innerHTML=h;lastFormula=h;}   // rebuild only when the constraints change
+    formula.querySelectorAll('.row').forEach(r=>r.classList.toggle('hot',+r.dataset.i===hot));
     const unb=poly.length>=3&&poly.some(v=>Math.abs(v[0])>59||Math.abs(v[1])>59);
     status.className='status'+(poly.length<3?' warn':'');
     status.textContent=poly.length<3?'The polyhedron is empty: no point satisfies every inequality.':(unb?'Nonempty and unbounded.':'Nonempty and bounded, with '+poly.length+' vertices.');
@@ -221,6 +221,8 @@ function arrowMarker(svg,id,color){const d=el('defs',{},svg);const mk=el('marker
     render();});
   const stop=()=>{drag=null;};svg.addEventListener('pointerup',stop);svg.addEventListener('pointercancel',stop);
   svg.addEventListener('pointerleave',()=>{if(!drag){hot=-1;render();}});
+  formula.addEventListener('click',ev=>{const b=ev.target.closest('.x');if(!b)return;cons.splice(+b.dataset.i,1);hot=-1;render();});
+  formula.addEventListener('pointerover',ev=>{const r=ev.target.closest('.row');if(!r||drag)return;const i=+r.dataset.i;if(i!==hot){hot=i;render();}});
   formula.addEventListener('pointerleave',()=>{if(!drag){hot=-1;render();}});
   document.getElementById('polyAdd').onclick=()=>{const th=Math.random()*Math.PI*2;const a=[Math.cos(th)*1.2,Math.sin(th)*1.2];const b=2.5+Math.random()*2;const n2=a[0]**2+a[1]**2;cons.push({a,b,p:[a[0]*b/n2,a[1]*b/n2]});hot=cons.length-1;render();};
   document.getElementById('polyReset').onclick=()=>{cons=defaults();hot=-1;render();};
