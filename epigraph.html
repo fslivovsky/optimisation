@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>C2 — The epigraph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --feasible:#2F6F9F; --feasible-fill:rgba(47,111,159,.24);
+  --accent:#A8325E; --ok:#2E7D4F; --objective:#8F5500;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.26);
+    --accent:#E27AA6; --ok:#5CC98A; --objective:#E3A63A;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.26);
+  --accent:#E27AA6; --ok:#5CC98A; --objective:#E3A63A;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.5vw,23px);line-height:1.4}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.6em 1.6em;padding:clamp(14px,2.5vh,30px) clamp(20px,4vw,64px) .4em}
+h1{font-weight:500;font-size:1.9em;margin:0;letter-spacing:-.01em}
+.tabs{display:flex;gap:.3em}
+.tabs button{font:inherit;background:none;border:1px solid var(--rule);color:var(--ink-soft);padding:.2em .9em;border-radius:6px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(20px,4vw,64px);color:var(--ink-soft);margin:.2em 0 .8em}
+main{padding:0 clamp(20px,4vw,64px) 24px}
+.view{display:none}
+.view.on{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(270px,1fr);gap:clamp(14px,2.5vw,40px)}
+.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none;user-select:none}
+#three{width:100%;aspect-ratio:4/3;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none;cursor:grab;position:relative;overflow:hidden}
+#three:active{cursor:grabbing}
+#three canvas{display:block}
+.panel{display:flex;flex-direction:column;gap:.85em;font-size:.92em;min-width:0}
+.fnlist{display:flex;flex-wrap:wrap;gap:.35em}
+.fnlist button{font:inherit;font-size:.92em;background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:.2em .7em;cursor:pointer}
+.fnlist button[aria-pressed="true"]{border-color:var(--feasible);box-shadow:inset 0 0 0 1px var(--feasible)}
+.fnlist button .nc{color:var(--accent);font-size:.8em}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .8em;align-items:center}
+button.btn{font:inherit;font-size:.92em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.25em .8em;cursor:pointer}
+button.btn:hover,.fnlist button:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+.formula{font-size:1.15em}
+.status{min-height:2.8em}
+.status .good{color:var(--ok)} .status .bad{color:var(--accent)}
+.note{color:var(--muted);font-size:.85em}
+.legend{display:flex;flex-wrap:wrap;gap:.3em 1.1em;font-size:.85em;color:var(--ink-soft)}
+.sw{display:inline-block;width:1.4em;height:.3em;border-radius:2px;vertical-align:middle;margin-right:.35em}
+.fail{color:var(--accent)}
+@media (max-width:900px){ .view.on{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>The epigraph</h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-v="v1">One variable</button>
+    <button role="tab" aria-selected="false" data-v="v2">Two variables</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">epi <i>f</i> = { (<i>x</i>, <i>t</i>) : <i>x</i> ∈ dom <i>f</i>, &nbsp;<i>t</i> ≥ <i>f</i>(<i>x</i>) }. &nbsp; <i>f</i> is convex exactly when epi <i>f</i> is a convex set.</p>
+
+<main>
+<!-- ============ 1D ============ -->
+<section class="view on" id="v1">
+  <div><svg id="b1" class="board" viewBox="0 0 760 540" role="img" aria-label="Graph of a function of one variable with its epigraph shaded and two draggable points joined by a segment"></svg></div>
+  <div class="panel">
+    <div class="fnlist" id="fn1"></div>
+    <div class="formula" id="form1"></div>
+    <div class="controls">
+      <button class="btn" id="chord1">Put both points on the graph</button>
+      <button class="btn" id="viol1">Look for a violation</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="tan1"> Show a tangent line (drag its point along the graph)</label>
+    <div class="status" id="st1"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--ok)"></span>segment inside epi <i>f</i></span>
+      <span><span class="sw" style="background:var(--accent)"></span>segment leaves epi <i>f</i></span>
+    </div>
+    <p class="note">Drag the two points anywhere in the shaded region. For a convex function the segment between them never leaves it; for a nonconvex one you can always find a pair where it does. With both points on the graph the segment is a chord, which is the definition of convexity itself.</p>
+  </div>
+</section>
+
+<!-- ============ 2D ============ -->
+<section class="view" id="v2">
+  <div><div id="three" aria-label="Three-dimensional view of the graph of a function of two variables with its epigraph shown as a translucent solid"></div></div>
+  <div class="panel">
+    <div class="fnlist" id="fn2"></div>
+    <div class="formula" id="form2"></div>
+    <div class="controls">
+      <button class="btn" id="pair2">New pair in epi <i>f</i></button>
+      <button class="btn" id="chord2">Pair on the graph</button>
+      <button class="btn" id="viol2">Look for a violation</button>
+    </div>
+    <div class="controls">
+      <label class="chk"><input type="checkbox" id="solid2" checked> Show epigraph</label>
+      <label class="chk"><input type="checkbox" id="spin2"> Rotate slowly</label>
+    </div>
+    <div class="status" id="st2"></div>
+    <p class="note">Drag to rotate, scroll or pinch to zoom. The epigraph is everything above the surface; it is cut off at a fixed height so it can be drawn.</p>
+  </div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const listeners=[];
+document.getElementById('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';listeners.forEach(f=>f());};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>listeners.forEach(f=>f()));
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* tabs */
+const tabs=[...document.querySelectorAll('[role=tab]')];let started3d=false;
+function openTab(id){tabs.forEach(t=>t.setAttribute('aria-selected',t.dataset.v===id));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id===id));if(id==='v2'){if(!started3d){started3d=true;init3d();}else if(window.__resize3d)window.__resize3d();}}
+tabs.forEach(t=>t.onclick=()=>openTab(t.dataset.v));
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='1')openTab('v1');if(e.key==='2')openTab('v2');});
+
+/* ================= 1D ================= */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,a,p){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const F1=[
+ {id:'sq',  name:'<i>x</i>²', f:x=>x*x, dom:[-3,3], convex:true, note:'Strictly convex.'},
+ {id:'abs', name:'|<i>x</i>|', f:x=>Math.abs(x), dom:[-3,3], convex:true, note:'Convex, not differentiable at 0: many lines touch the graph there from below.'},
+ {id:'pl',  name:'max of affine', f:x=>Math.max(-1.3*x-0.6,0.35*x+0.3,1.7*x-1.7), dom:[-3,3], convex:true, note:'max(−1.3<i>x</i> − 0.6, 0.35<i>x</i> + 0.3, 1.7<i>x</i> − 1.7). Its epigraph is an intersection of three halfplanes — a polyhedron.'},
+ {id:'exp', name:'<i>e</i><sup><i>x</i></sup>', f:x=>Math.exp(x), dom:[-3,1.8], convex:true, note:'Strictly convex.'},
+ {id:'log', name:'−log <i>x</i>', f:x=>-Math.log(x), dom:[0.004,3], convex:true, note:'Convex on the domain (0, ∞) only; the epigraph lives over that domain.'},
+ {id:'cub', name:'<i>x</i>³ <span class="nc">(nonconvex)</span>', f:x=>0.22*x*x*x+0.6, dom:[-3,3], convex:false, note:'Not convex (shown as 0.22<i>x</i>³ + 0.6). Concave for <i>x</i> &lt; 0.'},
+ {id:'dw',  name:'double well <span class="nc">(nonconvex)</span>', f:x=>0.35*(x*x-2)*(x*x-2), dom:[-3,3], convex:false, note:'Not convex: 0.35(<i>x</i>² − 2)². Two global minimizers, a bump between them.'}
+];
+let fn=F1[0];
+const W=760,H=540,XR=[-3.2,3.2],YR=[-1.3,6.2];
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W, sy=y=>H-(y-YR[0])/(YR[1]-YR[0])*H;
+const wx=px=>XR[0]+px/W*(XR[1]-XR[0]), wy=py=>YR[0]+(H-py)/H*(YR[1]-YR[0]);
+const b1=document.getElementById('b1');
+const gGrid=el('g',{},b1),gEpi=el('g',{},b1),gTan=el('g',{},b1),gSeg=el('g',{},b1),gPts=el('g',{},b1);
+(function grid(){for(let x=Math.ceil(XR[0]);x<=XR[1];x++){el('line',{x1:sx(x),y1:0,x2:sx(x),y2:H,stroke:'var(--grid)'},gGrid);if(x)el('text',{x:sx(x),y:sy(0)+17,'text-anchor':'middle','font-size':12,fill:'var(--muted)'},gGrid).textContent=x;}
+  for(let y=Math.ceil(YR[0]);y<=YR[1];y++){el('line',{x1:0,y1:sy(y),x2:W,y2:sy(y),stroke:'var(--grid)'},gGrid);if(y)el('text',{x:sx(0)-7,y:sy(y)+4,'text-anchor':'end','font-size':12,fill:'var(--muted)'},gGrid).textContent=y;}
+  el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
+  el('text',{x:W-10,y:sy(0)-8,'text-anchor':'end','font-size':15,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='x';
+  el('text',{x:sx(0)+8,y:18,'font-size':15,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='t';})();
+let P=[-1.6,3.2],Q=[1.4,4.4],T=0.8,drag=null;
+const inDom=x=>x>=fn.dom[0]&&x<=fn.dom[1];
+const inEpi=(x,y)=>inDom(x)&&y>=fn.f(x)-1e-9;
+function segOK(A,B){for(let i=0;i<=400;i++){const u=i/400;if(!inEpi(A[0]+u*(B[0]-A[0]),A[1]+u*(B[1]-A[1])))return false;}return true;}
+function deriv(x){const h=1e-4;const a=Math.max(fn.dom[0],x-h),b=Math.min(fn.dom[1],x+h);return (fn.f(b)-fn.f(a))/(b-a);}
+function render1(){
+  [gEpi,gTan,gSeg,gPts].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+  const N=500,pts=[];const [a,b]=fn.dom;
+  for(let i=0;i<=N;i++){const x=a+(b-a)*i/N;let y=fn.f(x);y=Math.max(YR[0]-1,Math.min(YR[1]+1,y));pts.push([x,y]);}
+  const top=YR[1]+1;
+  let d='M'+sx(a)+' '+sy(top)+' '+pts.map(p=>'L'+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ')+' L'+sx(b)+' '+sy(top)+' Z';
+  el('path',{d,fill:'var(--feasible-fill)'},gEpi);
+  el('path',{d:pts.map((p,i)=>(i?'L':'M')+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' '),fill:'none',stroke:'var(--feasible)','stroke-width':2.4},gEpi);
+  if(fn.dom[0]>-2.9)el('line',{x1:sx(fn.dom[0]),y1:0,x2:sx(fn.dom[0]),y2:H,stroke:'var(--muted)','stroke-dasharray':'4 5'},gEpi);
+  let xm=a,fm=Infinity;for(const p of pts)if(p[1]<fm){fm=p[1];xm=p[0];}
+  el('text',{x:sx(Math.min(Math.max(xm,a+0.35),b-0.35)),y:sy(5.55),'text-anchor':'middle','font-size':17,fill:'var(--feasible)','font-style':'italic'},gEpi).textContent='epi f';
+  // tangent
+  let tanOK=null;
+  if(document.getElementById('tan1').checked){T=Math.min(Math.max(T,a+0.02),b-0.02);const fT=fn.f(T),m=deriv(T);const L=x=>fT+m*(x-T);
+    el('line',{x1:0,y1:sy(L(XR[0])),x2:W,y2:sy(L(XR[1])),stroke:'var(--objective)','stroke-width':2,'stroke-dasharray':'8 5'},gTan);
+    tanOK=true;for(let i=0;i<=N;i++){const x=a+(b-a)*i/N;if(fn.f(x)<L(x)-1e-6){tanOK=false;break;}}
+    const tc=el('circle',{cx:sx(T),cy:sy(fT),r:7,fill:'var(--objective)',style:'cursor:ew-resize'},gTan);
+    const th=el('circle',{cx:sx(T),cy:sy(fT),r:16,fill:'transparent',style:'cursor:ew-resize'},gTan);th.addEventListener('pointerdown',ev=>{drag='T';b1.setPointerCapture(ev.pointerId);ev.stopPropagation();});}
+  // segment coloured piecewise
+  const M=240;for(let i=0;i<M;i++){const u0=i/M,u1=(i+1)/M,um=(u0+u1)/2;const X=u=>P[0]+u*(Q[0]-P[0]),Y=u=>P[1]+u*(Q[1]-P[1]);
+    const ok=inEpi(X(um),Y(um));el('line',{x1:sx(X(u0)),y1:sy(Y(u0)),x2:sx(X(u1)),y2:sy(Y(u1)),stroke:ok?'var(--ok)':'var(--accent)','stroke-width':ok?3:4,'stroke-linecap':'round'},gSeg);}
+  for(const [nm,Pt] of [['P',P],['Q',Q]]){const ok=inEpi(Pt[0],Pt[1]);
+    el('circle',{cx:sx(Pt[0]),cy:sy(Pt[1]),r:8,fill:ok?'var(--ink)':'var(--panel)',stroke:ok?'var(--ink)':'var(--accent)','stroke-width':2},gPts);
+    const lb=el('text',{x:sx(Pt[0])+12,y:sy(Pt[1])-10,'font-size':16,'font-style':'italic',fill:'var(--ink)'},gPts);lb.textContent=nm==='P'?'(x, s)':'(y, t)';
+    const hit=el('circle',{cx:sx(Pt[0]),cy:sy(Pt[1]),r:18,fill:'transparent',style:'cursor:grab'},gPts);hit.addEventListener('pointerdown',ev=>{drag=nm;b1.setPointerCapture(ev.pointerId);});}
+  // panel
+  document.getElementById('form1').innerHTML='<i>f</i>(<i>x</i>) = '+fn.name.replace(/ ?<span class="nc">\(nonconvex\)<\/span>/,'')+'<div class="note" style="font-size:.72em;margin-top:.3em">'+fn.note+'</div>';
+  const inP=inEpi(P[0],P[1]),inQ=inEpi(Q[0],Q[1]);let s;
+  if(!inP||!inQ)s='<span class="bad">A point is outside epi <i>f</i>.</span> Drag it into the shaded region.';
+  else if(segOK(P,Q))s='<span class="good">The segment stays inside epi <i>f</i>.</span>'+(fn.convex?' It always will: <i>f</i> is convex.':' Try other pairs — this function is not convex.');
+  else s='<span class="bad">The segment leaves epi <i>f</i>.</span> So epi <i>f</i> is not a convex set, and <i>f</i> is not a convex function.';
+  if(tanOK!==null)s+='<br>'+(tanOK?'<span class="good">The tangent lies below the graph everywhere.</span>':'<span class="bad">The tangent crosses above the graph somewhere</span> — the first-order condition fails.');
+  document.getElementById('st1').innerHTML=s;
+  document.querySelectorAll('#fn1 button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.id===fn.id));
+}
+const fn1=document.getElementById('fn1');
+F1.forEach(F=>{const b=document.createElement('button');b.dataset.id=F.id;b.innerHTML=F.name;b.onclick=()=>{fn=F;fixPoints();render1();};fn1.appendChild(b);});
+function fixPoints(){for(const Pt of [P,Q]){Pt[0]=Math.min(Math.max(Pt[0],fn.dom[0]+0.05),fn.dom[1]-0.05);if(Pt[1]<fn.f(Pt[0]))Pt[1]=Math.min(YR[1]-0.3,fn.f(Pt[0])+0.8);}}
+const pt=b1.createSVGPoint();
+b1.addEventListener('pointermove',ev=>{if(!drag)return;pt.x=ev.clientX;pt.y=ev.clientY;const p=pt.matrixTransform(b1.getScreenCTM().inverse());const x=Math.min(Math.max(wx(p.x),XR[0]),XR[1]),y=Math.min(Math.max(wy(p.y),YR[0]),YR[1]);
+  if(drag==='T')T=x;else{const Pt=drag==='P'?P:Q;Pt[0]=x;Pt[1]=y;}render1();});
+const stop=()=>drag=null;b1.addEventListener('pointerup',stop);b1.addEventListener('pointercancel',stop);
+document.getElementById('tan1').onchange=render1;
+document.getElementById('chord1').onclick=()=>{const [a,b]=fn.dom;let x1=a+0.25*(b-a),x2=a+0.78*(b-a);if(fn.id==='dw'){x1=-1.9;x2=1.9;}if(fn.id==='cub'){x1=-2.6;x2=0.4;}P=[x1,fn.f(x1)];Q=[x2,fn.f(x2)];render1();};
+function depth1(A,B){let d=0;for(let i=0;i<=200;i++){const u=i/200,x=A[0]+u*(B[0]-A[0]),y=A[1]+u*(B[1]-A[1]);if(inDom(x))d=Math.max(d,fn.f(x)-y);}return d;}
+document.getElementById('viol1').onclick=()=>{const [a,b]=fn.dom;let best=null,bd=1e-6;for(let k=0;k<3000;k++){const x1=a+Math.random()*(b-a),x2=a+Math.random()*(b-a);const y1=fn.f(x1)+Math.random()*0.3,y2=fn.f(x2)+Math.random()*0.3;
+    if(y1>YR[1]-0.2||y2>YR[1]-0.2||y1<YR[0]+0.2||y2<YR[0]+0.2)continue;const d=depth1([x1,y1],[x2,y2]);if(d>bd){bd=d;best=[[x1,y1],[x2,y2]];}}
+  if(best){P=best[0];Q=best[1];render1();return;}
+  render1();document.getElementById('st1').innerHTML+='<br>No violation found in 3000 random pairs — as expected for a convex function.';};
+listeners.push(render1);
+render1();
+
+/* ================= 2D ================= */
+function init3d(){
+  if(!window.THREE){document.getElementById('three').innerHTML='<p style="padding:1em" class="fail">The 3D library did not load (offline?). The one-variable view still works.</p>';return;}
+  const F2=[
+   {id:'bowl',name:'<i>x</i>² + 0.4<i>y</i>²',f:(x,y)=>x*x+0.4*y*y,convex:true,note:'Strictly convex quadratic; its Hessian is diag(2, 0.8) ≻ 0.'},
+   {id:'cone',name:'‖(<i>x</i>, <i>y</i>)‖',f:(x,y)=>1.3*Math.hypot(x,y),convex:true,note:'A norm (scaled by 1.3): convex, not differentiable at the origin. The epigraph is an ice-cream cone.'},
+   {id:'pl',name:'max of affine',f:(x,y)=>Math.max(0.9*x+0.35*y+0.8,-0.9*x+0.5*y+0.6,0.1*x-1.1*y+0.4),convex:true,note:'Maximum of three affine functions; the epigraph is a polyhedron.'},
+   {id:'val',name:'0.6<i>x</i>²',f:(x,y)=>0.6*x*x,convex:true,note:'Convex but not strictly: flat along the <i>y</i>-direction, so chords along that direction lie on the graph.'},
+   {id:'sad',name:'saddle <span class="nc">(nonconvex)</span>',f:(x,y)=>0.55*(x*x-y*y),convex:false,note:'0.55(<i>x</i>² − <i>y</i>²): convex along <i>x</i>, concave along <i>y</i>. Not convex.'},
+   {id:'dw',name:'double well <span class="nc">(nonconvex)</span>',f:(x,y)=>0.4*(x*x-1.8)*(x*x-1.8)+0.35*y*y,convex:false,note:'Two separate minimizers. Every descent method can end in either; the epigraph has a dent between them.'}
+  ];
+  let fn2=F2[0];const DOM=1.9,ZMAX=4.2,RES=90;
+  const box=document.getElementById('three');
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));box.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(38,4/3,0.1,100);camera.up.set(0,0,1);
+  scene.add(new THREE.AmbientLight(0xffffff,0.62));const dl=new THREE.DirectionalLight(0xffffff,0.55);dl.position.set(3,-5,7);scene.add(dl);const dl2=new THREE.DirectionalLight(0xffffff,0.25);dl2.position.set(-4,3,2);scene.add(dl2);
+  let az=-1.05,el3=0.36,rad=12.5;const target=new THREE.Vector3(0,0,1.5);
+  function placeCam(){camera.position.set(target.x+rad*Math.cos(el3)*Math.cos(az),target.y+rad*Math.cos(el3)*Math.sin(az),target.z+rad*Math.sin(el3));camera.lookAt(target);}
+  let group=new THREE.Group(),segGroup=new THREE.Group();scene.add(group);scene.add(segGroup);
+  const col=n=>new THREE.Color(css(n)||'#888');
+  let floorZ=0,pair=null;
+  const clampZ=z=>Math.max(floorZ,Math.min(ZMAX,z));
+  function build(){
+    group.children.slice().forEach(o=>{group.remove(o);o.geometry&&o.geometry.dispose();o.material&&o.material.dispose();});
+    let fmin=Infinity;for(let i=0;i<=40;i++)for(let j=0;j<=40;j++){fmin=Math.min(fmin,fn2.f(-DOM+2*DOM*i/40,-DOM+2*DOM*j/40));}
+    floorZ=Math.max(-2.4,Math.min(0,fmin))-0.35;
+    const cF=col('--feasible'),cInk=col('--ink-soft'),cGrid=col('--axis');
+    // surface
+    const g=new THREE.PlaneGeometry(2*DOM,2*DOM,RES,RES);const p=g.attributes.position;
+    for(let i=0;i<p.count;i++){p.setZ(i,clampZ(fn2.f(p.getX(i),p.getY(i))));}g.computeVertexNormals();
+    const surf=new THREE.Mesh(g,new THREE.MeshPhongMaterial({color:cF,side:THREE.DoubleSide,shininess:25,transparent:true,opacity:0.8,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}));group.add(surf);
+    // grid lines on surface
+    const lp=[];const K=12;for(let k=0;k<=K;k++){const c=-DOM+2*DOM*k/K;for(let i=0;i<RES;i++){const a=-DOM+2*DOM*i/RES,b=-DOM+2*DOM*(i+1)/RES;
+        lp.push(c,a,clampZ(fn2.f(c,a)),c,b,clampZ(fn2.f(c,b)));lp.push(a,c,clampZ(fn2.f(a,c)),b,c,clampZ(fn2.f(b,c)));}}
+    const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));group.add(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:cInk,transparent:true,opacity:0.35})));
+    // epigraph solid: walls + cap
+    if(document.getElementById('solid2').checked){
+      const wv=[];const edge=(x0,y0,x1,y1)=>{for(let i=0;i<RES;i++){const u0=i/RES,u1=(i+1)/RES;const ax=x0+u0*(x1-x0),ay=y0+u0*(y1-y0),bx=x0+u1*(x1-x0),by=y0+u1*(y1-y0);
+          const az_=clampZ(fn2.f(ax,ay)),bz=clampZ(fn2.f(bx,by));wv.push(ax,ay,az_,bx,by,bz,bx,by,ZMAX, ax,ay,az_,bx,by,ZMAX,ax,ay,ZMAX);}};
+      edge(-DOM,-DOM,DOM,-DOM);edge(DOM,-DOM,DOM,DOM);edge(DOM,DOM,-DOM,DOM);edge(-DOM,DOM,-DOM,-DOM);
+      wv.push(-DOM,-DOM,ZMAX,DOM,-DOM,ZMAX,DOM,DOM,ZMAX,-DOM,-DOM,ZMAX,DOM,DOM,ZMAX,-DOM,DOM,ZMAX);
+      const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.Float32BufferAttribute(wv,3));wg.computeVertexNormals();
+      group.add(new THREE.Mesh(wg,new THREE.MeshBasicMaterial({color:cF,transparent:true,opacity:0.16,side:THREE.DoubleSide,depthWrite:false})));
+      // outline of the cut
+      const ov=[];const oe=(x0,y0,x1,y1)=>{for(let i=0;i<RES;i++){const u0=i/RES,u1=(i+1)/RES;const ax=x0+u0*(x1-x0),ay=y0+u0*(y1-y0),bx=x0+u1*(x1-x0),by=y0+u1*(y1-y0);ov.push(ax,ay,clampZ(fn2.f(ax,ay)),bx,by,clampZ(fn2.f(bx,by)));}ov.push(x0,y0,ZMAX,x1,y1,ZMAX);};
+      oe(-DOM,-DOM,DOM,-DOM);oe(DOM,-DOM,DOM,DOM);oe(DOM,DOM,-DOM,DOM);oe(-DOM,DOM,-DOM,-DOM);
+      for(const [x,y] of [[-DOM,-DOM],[DOM,-DOM],[DOM,DOM],[-DOM,DOM]])ov.push(x,y,clampZ(fn2.f(x,y)),x,y,ZMAX);
+      const og=new THREE.BufferGeometry();og.setAttribute('position',new THREE.Float32BufferAttribute(ov,3));group.add(new THREE.LineSegments(og,new THREE.LineBasicMaterial({color:cF,transparent:true,opacity:0.7})));
+    }
+    // floor grid and axes
+    const fv=[];for(let k=-2;k<=2;k++){fv.push(k,-2.3,floorZ,k,2.3,floorZ,-2.3,k,floorZ,2.3,k,floorZ);}
+    const fg=new THREE.BufferGeometry();fg.setAttribute('position',new THREE.Float32BufferAttribute(fv,3));group.add(new THREE.LineSegments(fg,new THREE.LineBasicMaterial({color:cGrid,transparent:true,opacity:0.6})));
+    const av=[-2.6,0,floorZ,2.6,0,floorZ,0,-2.6,floorZ,0,2.6,floorZ,0,0,floorZ,0,0,ZMAX+0.5];const ag=new THREE.BufferGeometry();ag.setAttribute('position',new THREE.Float32BufferAttribute(av,3));
+    group.add(new THREE.LineSegments(ag,new THREE.LineBasicMaterial({color:cInk})));
+    for(const [txt,pos] of [['x',[2.85,0,floorZ]],['y',[0,2.85,floorZ]],['t',[0,0,ZMAX+0.75]]])group.add(label(txt,pos));
+    drawPair();
+  }
+  function label(txt,pos){const c=document.createElement('canvas');c.width=64;c.height=64;const x=c.getContext('2d');x.fillStyle=css('--ink-soft');x.font='italic 44px Newsreader, Georgia, serif';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,32,32);
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.position.set(...pos);s.scale.set(0.45,0.45,1);return s;}
+  const inEpi2=(x,y,z)=>Math.abs(x)<=DOM+1e-9&&Math.abs(y)<=DOM+1e-9&&z>=fn2.f(x,y)-1e-9;
+  function seg2OK(A,B){for(let i=0;i<=300;i++){const u=i/300;if(!inEpi2(A[0]+u*(B[0]-A[0]),A[1]+u*(B[1]-A[1]),A[2]+u*(B[2]-A[2])))return false;}return true;}
+  function drawPair(){
+    segGroup.children.slice().forEach(o=>{segGroup.remove(o);o.geometry&&o.geometry.dispose();o.material&&o.material.dispose();});
+    const st=document.getElementById('st2');
+    document.getElementById('form2').innerHTML='<i>f</i>(<i>x</i>, <i>y</i>) = '+fn2.name.replace(/ ?<span class="nc">\(nonconvex\)<\/span>/,'')+'<div class="note" style="font-size:.72em;margin-top:.3em">'+fn2.note+'</div>';
+    document.querySelectorAll('#fn2 button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.id===fn2.id));
+    if(!pair){st.innerHTML='Pick a pair of points to test the segment between them.';return;}
+    const [A,B]=pair;const cOk=col('--ok'),cBad=col('--accent');const v=[],c=[];const M=160;
+    for(let i=0;i<M;i++){const u0=i/M,u1=(i+1)/M,um=(u0+u1)/2;const P_=u=>[A[0]+u*(B[0]-A[0]),A[1]+u*(B[1]-A[1]),A[2]+u*(B[2]-A[2])];const a=P_(u0),b=P_(u1),m=P_(um);
+      const ok=inEpi2(...m);v.push(...a,...b);const cc=ok?cOk:cBad;c.push(cc.r,cc.g,cc.b,cc.r,cc.g,cc.b);}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setAttribute('color',new THREE.Float32BufferAttribute(c,3));
+    segGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,depthTest:false,transparent:true})));
+    // thicker look: tubes per colour run
+    let run=[],runOk=null;const flush=()=>{if(run.length>1){const curve=new THREE.CatmullRomCurve3(run.map(p=>new THREE.Vector3(...p)));const tg=new THREE.TubeGeometry(curve,Math.max(2,run.length),0.035,8,false);
+        segGroup.add(new THREE.Mesh(tg,new THREE.MeshBasicMaterial({color:runOk?cOk:cBad,depthTest:false,transparent:true})));}run=[];};
+    for(let i=0;i<=M;i++){const u=i/M;const p=[A[0]+u*(B[0]-A[0]),A[1]+u*(B[1]-A[1]),A[2]+u*(B[2]-A[2])];const ok=inEpi2(...p);if(runOk===null)runOk=ok;if(ok!==runOk){run.push(p);flush();runOk=ok;}run.push(p);}flush();
+    for(const Pt of [A,B]){const s=new THREE.Mesh(new THREE.SphereGeometry(0.09,20,14),new THREE.MeshBasicMaterial({color:col('--ink'),depthTest:false,transparent:true}));s.position.set(...Pt);segGroup.add(s);}
+    segGroup.children.forEach(o=>o.renderOrder=10);
+    st.innerHTML=seg2OK(A,B)?'<span class="good">The segment stays inside epi <i>f</i>.</span>'+(fn2.convex?' For a convex <i>f</i> it always will.':' Look for another pair — this <i>f</i> is not convex.'):'<span class="bad">The segment passes below the graph.</span> epi <i>f</i> is not convex, so <i>f</i> is not a convex function.';
+  }
+  function randomIn(){for(let k=0;k<100;k++){const x=(Math.random()*2-1)*DOM*0.95,y=(Math.random()*2-1)*DOM*0.95;const fz=fn2.f(x,y);if(fz<ZMAX-0.4){return [x,y,fz+Math.random()*Math.min(1.2,ZMAX-fz-0.1)];}}return [0,0,ZMAX-0.2];}
+  document.getElementById('pair2').onclick=()=>{pair=[randomIn(),randomIn()];drawPair();};
+  document.getElementById('chord2').onclick=()=>{let A,B;for(let k=0;k<200;k++){const a=randomIn(),b=randomIn();A=[a[0],a[1],fn2.f(a[0],a[1])];B=[b[0],b[1],fn2.f(b[0],b[1])];if(Math.hypot(A[0]-B[0],A[1]-B[1])>1.6)break;}pair=[A,B];drawPair();};
+  function depth2(A,B){let d=0;for(let i=0;i<=120;i++){const u=i/120;const x=A[0]+u*(B[0]-A[0]),y=A[1]+u*(B[1]-A[1]),z=A[2]+u*(B[2]-A[2]);d=Math.max(d,fn2.f(x,y)-z);}return d;}
+  document.getElementById('viol2').onclick=()=>{let best=null,bd=1e-6;for(let k=0;k<3000;k++){const a=randomIn(),b=randomIn();a[2]=Math.min(a[2],fn2.f(a[0],a[1])+0.25);b[2]=Math.min(b[2],fn2.f(b[0],b[1])+0.25);const d=depth2(a,b);if(d>bd){bd=d;best=[a,b];}}
+    if(best){pair=best;drawPair();return;}
+    drawPair();document.getElementById('st2').innerHTML+='<br>No violation found in 3000 random pairs — as expected for a convex function.';};
+  document.getElementById('solid2').onchange=build;
+  const fnEl=document.getElementById('fn2');F2.forEach(F=>{const b=document.createElement('button');b.dataset.id=F.id;b.innerHTML=F.name;b.onclick=()=>{fn2=F;pair=null;build();};fnEl.appendChild(b);});
+  // interaction
+  let down=null;const cv=renderer.domElement;
+  cv.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,az,el:el3};cv.setPointerCapture(e.pointerId);});
+  cv.addEventListener('pointermove',e=>{if(!down)return;az=down.az-(e.clientX-down.x)*0.008;el3=Math.max(-0.2,Math.min(1.45,down.el+(e.clientY-down.y)*0.006));});
+  const up=()=>down=null;cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();rad=Math.max(5,Math.min(22,rad*(1+Math.sign(e.deltaY)*0.08)));},{passive:false});
+  let pinch=null;cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch={d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),r:rad};down=null;}},{passive:true});
+  cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);rad=Math.max(5,Math.min(22,pinch.r*pinch.d/d));}},{passive:true});
+  cv.addEventListener('touchend',()=>pinch=null);
+  function resize(){const w=box.clientWidth,h=box.clientHeight||w*0.75;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+  window.__resize3d=resize;window.addEventListener('resize',resize);
+  listeners.push(build);
+  resize();build();
+  function loop(){if(document.getElementById('spin2').checked&&!down&&!reduced)az+=0.003;placeCam();renderer.render(scene,camera);requestAnimationFrame(loop);}loop();
+}
+})();
+</script>
+</body>
+</html>

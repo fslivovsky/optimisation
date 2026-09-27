@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>C2 — Tangent inequality implies convexity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --graph:#2F6F9F; --tangent:#8F5500; --gap:#2E7D4F; --panel:#FFFFFF; --focus:#2F6F9F; --axis:#B7BEC5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --graph:#6FB0E0; --tangent:#E3A63A; --gap:#5CC98A; --panel:#1B2027; --focus:#6FB0E0; --axis:#3B434D;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --graph:#6FB0E0; --tangent:#E3A63A; --gap:#5CC98A; --panel:#1B2027; --focus:#6FB0E0; --axis:#3B434D;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.5vw,23px);line-height:1.4}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,30px) clamp(20px,4vw,64px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.stmt{padding:0 clamp(20px,4vw,64px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:52em}
+main{padding:0 clamp(20px,4vw,64px) 24px;display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:clamp(14px,2.5vw,40px)}
+svg{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px}
+.panel{display:flex;flex-direction:column;gap:.9em;font-size:.92em;min-width:0}
+.row{display:grid;grid-template-columns:2em 1fr 3.2em;align-items:center;gap:.6em}
+.row label{font-style:italic;color:var(--ink-soft)}
+.row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--graph)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.ro{color:var(--ink-soft);line-height:1.55}
+.ro b{font-weight:500;color:var(--ink)}
+.proof{border-top:1px solid var(--rule);padding-top:.8em;line-height:1.6}
+.proof p{margin:.35em 0}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tangent inequality ⇒ convexity</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="stmt">If <i>f</i>(<i>w</i>) ≥ <i>f</i>(<i>z</i>) + ∇<i>f</i>(<i>z</i>)<sup>T</sup>(<i>w</i> − <i>z</i>) for all <i>w</i>, <i>z</i>, then <i>f</i> is convex. Take <i>z</i> = θ<i>x</i> + (1 − θ)<i>y</i> and apply the inequality at <i>z</i> with <i>w</i> = <i>x</i> and <i>w</i> = <i>y</i>.</p>
+<main>
+  <div><svg id="g" viewBox="0 0 900 420" role="img" aria-label="Convex graph, the tangent at z, and the tangent's values at x and y labelled with their formulas"></svg></div>
+  <div class="panel">
+    <div class="row"><label for="th">θ</label><input type="range" id="th" min="0.05" max="0.95" step="0.01" value="0.35"><output id="thv"></output></div>
+    <div class="row"><label for="xs">x</label><input type="range" id="xs" min="-2.8" max="2.8" step="0.01" value="-2.2"><output id="xv"></output></div>
+    <div class="row"><label for="ys">y</label><input type="range" id="ys" min="-2.8" max="2.8" step="0.01" value="2.3"><output id="yv"></output></div>
+    <div class="ro" id="ro"></div>
+    <div class="proof">
+      <p><span style="color:var(--gap)">Green gaps</span>: the two inequalities, <i>f</i>(<i>x</i>) ≥ ℓ(<i>x</i>) and <i>f</i>(<i>y</i>) ≥ ℓ(<i>y</i>).</p>
+      <p><span style="color:var(--tangent)">Tangent</span> ℓ is affine, so θℓ(<i>x</i>) + (1 − θ)ℓ(<i>y</i>) = ℓ(<i>z</i>) = <i>f</i>(<i>z</i>): the gradient terms cancel because θ(<i>x</i> − <i>z</i>) + (1 − θ)(<i>y</i> − <i>z</i>) = 0.</p>
+      <p>Adding the gaps with weights θ, 1 − θ lifts <i>f</i>(<i>z</i>) to the chord: θ<i>f</i>(<i>x</i>) + (1 − θ)<i>f</i>(<i>y</i>) ≥ <i>f</i>(<i>z</i>).</p>
+    </div>
+    <p class="note">Nothing here uses that the tangent varies continuously with <i>z</i>: one supporting line at the single point <i>z</i> is all the argument needs.</p>
+  </div>
+</main>
+<script>
+(function(){
+'use strict';
+const NS='http://www.w3.org/2000/svg',svg=document.getElementById('g');
+const f=t=>0.32*t*t+0.12*t+0.45, fp=t=>0.64*t+0.12;
+const W=900,PW=760,X0=-3.1,X1=3.1,Y0=-0.9,Y1=3.9,TOP=14,GH=370;
+const sx=t=>34+(t-X0)/(X1-X0)*(PW-68), sy=v=>TOP+(Y1-v)/(Y1-Y0)*GH;
+function E(tag,a){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;}
+function T(x,y,s,o){const e=E('text',Object.assign({x,y,'font-size':18,fill:'var(--ink-soft)','font-family':'Newsreader, Georgia, serif'},o||{}));e.textContent=s;return e;}
+const $=id=>document.getElementById(id);
+function draw(){
+  const th=+$('th').value,x=+$('xs').value,y=+$('ys').value;
+  $('thv').textContent=th.toFixed(2);$('xv').textContent=x.toFixed(2);$('yv').textContent=y.toFixed(2);
+  while(svg.firstChild)svg.removeChild(svg.firstChild);
+  const z=th*x+(1-th)*y,fz=f(z),m=fp(z),L=t=>fz+m*(t-z);
+  E('line',{x1:34,y1:sy(0),x2:PW-34,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3});
+  let d='';for(let i=0;i<=240;i++){const t=X0+(X1-X0)*i/240;d+=(i?'L':'M')+sx(t).toFixed(1)+' '+sy(f(t)).toFixed(1);}
+  E('path',{d,fill:'none',stroke:'var(--graph)','stroke-width':2.6});
+  E('line',{x1:sx(X0),y1:sy(L(X0)),x2:sx(X1),y2:sy(L(X1)),stroke:'var(--tangent)','stroke-width':2});
+  E('line',{x1:sx(x),y1:sy(f(x)),x2:sx(y),y2:sy(f(y)),stroke:'var(--ink-soft)','stroke-width':1.5,'stroke-dasharray':'7 6'});
+  for(const [t,lab] of [[x,'x'],[y,'y']]){
+    const left=t<z;
+    E('line',{x1:sx(t),y1:sy(f(t)),x2:sx(t),y2:sy(L(t)),stroke:'var(--gap)','stroke-width':5,'stroke-linecap':'round'});
+    E('line',{x1:sx(t),y1:sy(0),x2:sx(t),y2:sy(Math.min(L(t),f(t))),stroke:'var(--rule)','stroke-dasharray':'2 5'});
+    E('circle',{cx:sx(t),cy:sy(f(t)),r:6,fill:'var(--graph)'});
+    E('circle',{cx:sx(t),cy:sy(L(t)),r:5.5,fill:'var(--tangent)'});
+    T(sx(t)+(left?-11:11),sy(f(t))-8,'f('+lab+')',{'text-anchor':left?'end':'start',fill:'var(--graph)','font-style':'italic'});
+    if(left)T(sx(t)+11,sy(L(t))+22,'f(z) + ∇f(z)ᵀ('+lab+' − z)',{'text-anchor':'start',fill:'var(--tangent)'});
+    else T(sx(t)+13,sy(L(t))+16,'f(z) + ∇f(z)ᵀ('+lab+' − z)',{'text-anchor':'start',fill:'var(--tangent)'});
+    T(sx(t)+(Math.min(L(t),f(t))<0?13:0),sy(0)+20,lab,{'text-anchor':'middle','font-style':'italic'});
+  }
+  const cz=th*f(x)+(1-th)*f(y);
+  E('line',{x1:sx(z),y1:sy(cz),x2:sx(z),y2:sy(fz),stroke:'var(--gap)','stroke-width':1.8,'stroke-dasharray':'3 4'});
+  E('line',{x1:sx(z),y1:sy(0),x2:sx(z),y2:sy(fz),stroke:'var(--rule)','stroke-dasharray':'2 5'});
+  E('circle',{cx:sx(z),cy:sy(cz),r:6.5,fill:'var(--panel)',stroke:'var(--ink)','stroke-width':1.8});
+  E('circle',{cx:sx(z),cy:sy(fz),r:6.5,fill:'var(--tangent)',stroke:'var(--graph)','stroke-width':2.2});
+  T(sx(z),sy(0)+20,'z',{'text-anchor':'middle','font-style':'italic'});
+  T(sx(z),sy(cz)-12,'θf(x) + (1−θ)f(y)',{'text-anchor':'middle',fill:'var(--ink)'});
+  T(sx(z)+13,sy(fz)+22,'f(z)',{'text-anchor':'start',fill:'var(--tangent)','font-style':'italic'});
+  T(48,32,'f',{fill:'var(--graph)','font-style':'italic','font-size':18});
+  T(48,54,'tangent at z',{fill:'var(--tangent)'});
+  T(48,76,'gaps ≥ 0',{fill:'var(--gap)'});
+  const lx=L(x),ly=L(y);
+  $('ro').innerHTML='Tangent values: <b>'+lx.toFixed(2)+'</b> at <i>x</i>, <b>'+ly.toFixed(2)+'</b> at <i>y</i>. Weighted average: <b>'+(th*lx+(1-th)*ly).toFixed(2)+'</b> = <i>f</i>(<i>z</i>). Chord value at <i>z</i>: <b>'+cz.toFixed(2)+'</b> ≥ <i>f</i>(<i>z</i>).';
+}
+['th','xs','ys'].forEach(i=>$(i).addEventListener('input',draw));
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A linear objective over a convex set</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3;
+  --ink:#1B2430;
+  --ink-soft:#4A5361;
+  --muted:#8A929E;
+  --rule:#CFD5D9;
+  --feasible:#2F6F9F;
+  --feasible-fill:rgba(47,111,159,.28);
+  --half-fill:rgba(47,111,159,.10);
+  --accent:#A8325E;
+  --accent-fill:rgba(168,50,94,.12);
+  --objective:#8F5500;
+  --objective-fill:rgba(143,85,0,.14);
+  --grid:#E3E7E6;
+  --axis:#B7BEC5;
+  --panel:#FFFFFF;
+  --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.30); --half-fill:rgba(111,176,224,.10);
+    --accent:#E27AA6; --accent-fill:rgba(226,122,166,.14);
+    --objective:#E3A63A; --objective-fill:rgba(227,166,58,.16);
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.30); --half-fill:rgba(111,176,224,.10);
+  --accent:#E27AA6; --accent-fill:rgba(226,122,166,.14);
+  --objective:#E3A63A; --objective-fill:rgba(227,166,58,.16);
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--paper);color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.6vw,24px);line-height:1.4;}
+*,*::before,*::after{box-sizing:inherit}
+i,.v{font-style:italic}
+.deck{height:100%;display:flex;flex-direction:column}
+.slide{display:none;flex:1;min-height:0;padding:clamp(18px,3.5vh,44px) clamp(20px,4vw,72px);overflow:auto}
+.slide.on{display:flex;flex-direction:column}
+.slide h1{font-weight:500;font-size:2.4em;line-height:1.1;margin:0 0 .3em;letter-spacing:-.01em}
+.slide h2{font-weight:500;font-size:1.75em;line-height:1.15;margin:0 0 .5em;letter-spacing:-.01em}
+.slide p{margin:.35em 0;max-width:34em}
+.lede{color:var(--ink-soft)}
+.kicker{color:var(--muted);font-size:.85em;margin-bottom:.6em}
+.two{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:clamp(14px,2.5vw,40px);flex:1;min-height:0}
+.two > figure{margin:0;min-width:0;display:flex;align-items:center}
+.two svg.board{width:100%;height:auto;max-height:100%;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none;user-select:none}
+.panel{display:flex;flex-direction:column;gap:.9em;font-size:.92em;min-width:0}
+.formula{font-size:1.15em;line-height:1.6}
+.formula .row{display:flex;align-items:baseline;gap:.5em;padding:.08em .4em;border-radius:4px;cursor:default}
+.formula .row.hot{background:var(--accent-fill)}
+.formula .row .tag{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--accent);transform:translateY(-.05em);flex:none}
+.formula .row .x{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;padding:0 .3em;line-height:1}
+.formula .row .x:hover{color:var(--accent)}
+.brace{color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:.5em .8em;align-items:center}
+button.btn{font:inherit;font-size:.95em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.3em .8em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button.btn:focus-visible,input:focus-visible,.hit:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--objective)}
+.readout{color:var(--ink-soft)}
+.readout b{font-weight:500;color:var(--ink)}
+.note{color:var(--muted);font-size:.85em;max-width:30em}
+.status{min-height:1.4em}
+.status.warn{color:var(--accent)}
+.nav{flex:none;display:flex;justify-content:space-between;align-items:center;padding:.4em clamp(20px,4vw,72px) .7em;color:var(--muted);font-size:.8em;border-top:1px solid var(--rule)}
+.nav button{font:inherit;background:none;border:0;color:var(--ink-soft);cursor:pointer;padding:.2em .5em}
+.nav button:hover{color:var(--ink)}
+.nav .mid{display:flex;gap:1.2em;align-items:center}
+.map{width:100%;height:auto;max-height:100%;display:block}
+.map text{font-family:inherit;fill:var(--ink)}
+.map .soft{fill:var(--ink-soft)}
+.map .mut{fill:var(--muted)}
+.map .box{fill:var(--panel);stroke:var(--rule);stroke-width:1.2}
+.map .band{fill:var(--feasible-fill);stroke:var(--feasible);stroke-width:1.2}
+.map .top{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
+.map .dash{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:6 5}
+.map .arr{fill:none;stroke:var(--ink-soft);stroke-width:1.4}
+.map .arr2{fill:none;stroke:var(--accent);stroke-width:1.4;stroke-dasharray:5 4}
+.figwrap{flex:1;min-height:0;display:flex;align-items:center;margin:0}
+.claims{font-size:1.15em;line-height:1.5;max-width:36em}
+.claims li{margin:.5em 0}
+.claims ol{padding-left:1.4em}
+@media (max-width:900px){
+  .two{grid-template-columns:1fr}
+  .two > figure{align-items:flex-start}
+  body{font-size:17px}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+<style>
+.slide{display:flex!important;min-height:100vh}
+.two > figure{align-items:flex-start}
+.topbar{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:16px;z-index:5}
+.topbar button{font:inherit;font-size:.75em;background:none;border:0;color:var(--muted);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="topbar"><button id="theme" aria-label="Toggle light or dark">Light / dark</button></div>
+<section class="slide on" data-title="Linear objective">
+  <h2>A linear objective over a convex set</h2>
+  <div class="two">
+    <figure>
+      <svg id="obj" class="board" viewBox="0 0 760 560" role="img" aria-label="Interactive: level lines of a linear objective sliding across a polyhedron or a disc"></svg>
+    </figure>
+    <div class="panel">
+      <div class="formula" id="objFormula"></div>
+      <div>
+        <input type="range" id="objT" min="-20" max="20" step="0.01" value="0" aria-label="Level t of the objective">
+        <div class="readout" id="objRead"></div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="objSlide">Slide to the minimum</button>
+        <button class="btn" id="objSet">Feasible set: polyhedron</button>
+        <label class="chk"><input type="checkbox" id="objReveal"> Reveal minimiser</label>
+      </div>
+      <div class="status" id="objStatus"></div>
+      <div class="formula" id="objCons"></div>
+      <p class="note">Drag the tip of <i>c</i> to change the objective. Remove a constraint to make the polyhedron unbounded. Switch to the disc to see a boundary optimum with no vertex.</p>
+    </div>
+  </div>
+</section>
+<script>
+(function(){
+'use strict';
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+document.getElementById('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark'};
+/* ---------- helpers ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function fmt(v){const s=(Math.round(v*10)/10).toFixed(1);return s==='-0.0'?'0.0':s;}
+function ineq(a,b){ // a1 x + a2 y <= b as html
+  const term=(c,v,first)=>{const ab=Math.abs(c);const num=ab===1?'':fmt(ab);const sign=c<0?'−':(first?'':'+');
+    if(Math.abs(c)<1e-9)return '';return (first?(c<0?'−':''):(' '+sign+' '))+num+'<i>'+v+'</i>';};
+  let s=term(a[0],'x',true);const t2=term(a[1],'y',s==='');s+=t2;if(s==='')s='0';return s+' ≤ '+fmt(b);}
+function clip(poly,a,b){ // keep a·p <= b
+  const out=[];const n=poly.length;if(!n)return out;
+  for(let i=0;i<n;i++){const P=poly[i],Q=poly[(i+1)%n];const sp=a[0]*P[0]+a[1]*P[1]-b,sq=a[0]*Q[0]+a[1]*Q[1]-b;
+    if(sp<=1e-9)out.push(P);
+    if((sp<-1e-9&&sq>1e-9)||(sp>1e-9&&sq<-1e-9)){const t=sp/(sp-sq);out.push([P[0]+t*(Q[0]-P[0]),P[1]+t*(Q[1]-P[1])]);}}
+  const ded=[];for(const p of out){const q=ded[ded.length-1];if(!q||Math.hypot(p[0]-q[0],p[1]-q[1])>1e-7)ded.push(p);}
+  if(ded.length>1){const f=ded[0],l=ded[ded.length-1];if(Math.hypot(f[0]-l[0],f[1]-l[1])<1e-7)ded.pop();}
+  return ded;}
+function intersectAll(cons,B){let poly=[[-B,-B],[B,-B],[B,B],[-B,B]];for(const c of cons){poly=clip(poly,c.a,c.b);if(poly.length<3)return poly;}return poly;}
+
+/* ---------- board: shared world<->svg ---------- */
+function makeBoard(svg,W,H,S){
+  const cx=W/2,cy=H/2;
+  const toS=(x,y)=>[cx+x*S,cy-y*S];const toW=(px,py)=>[(px-cx)/S,(cy-py)/S];
+  const xr=W/2/S,yr=H/2/S;
+  const g=el('g',{},svg);
+  for(let x=Math.ceil(-xr);x<=xr;x++){const [px]=toS(x,0);el('line',{x1:px,y1:0,x2:px,y2:H,stroke:'var(--grid)','stroke-width':1},g);}
+  for(let y=Math.ceil(-yr);y<=yr;y++){const [,py]=toS(0,y);el('line',{x1:0,y1:py,x2:W,y2:py,stroke:'var(--grid)','stroke-width':1},g);}
+  el('line',{x1:0,y1:cy,x2:W,y2:cy,stroke:'var(--axis)','stroke-width':1.2},g);
+  el('line',{x1:cx,y1:0,x2:cx,y2:H,stroke:'var(--axis)','stroke-width':1.2},g);
+  for(let x=Math.ceil(-xr);x<=xr;x++){if(!x)continue;const [px]=toS(x,0);el('text',{x:px,y:cy+16,'text-anchor':'middle','font-size':11,fill:'var(--muted)'},g).textContent=x;}
+  for(let y=Math.ceil(-yr);y<=yr;y++){if(!y)continue;const [,py]=toS(0,y);el('text',{x:cx-6,y:py+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'},g).textContent=y;}
+  const pt=svg.createSVGPoint();
+  function pointer(ev){pt.x=ev.clientX;pt.y=ev.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());return toW(p.x,p.y);}
+  return {toS,toW,pointer,W,H,S};
+}
+function polyPath(pts,toS){if(!pts.length)return '';return pts.map((p,i)=>(i?'L':'M')+toS(p[0],p[1]).join(' ')).join(' ')+' Z';}
+function linePath(a,b,toS){ // a·x=b, long segment through anchor
+  const n=Math.hypot(a[0],a[1]);if(n<1e-9)return '';const p=[a[0]*b/(n*n),a[1]*b/(n*n)];const d=[-a[1]/n,a[0]/n];const L=60;
+  const P=toS(p[0]-L*d[0],p[1]-L*d[1]),Q=toS(p[0]+L*d[0],p[1]+L*d[1]);return 'M'+P.join(' ')+' L'+Q.join(' ');}
+function arrowMarker(svg,id,color){const d=el('defs',{},svg);const mk=el('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},d);el('path',{d:'M0 0 L10 5 L0 10 z',fill:color},mk);}
+
+/* ---------- slide 6: linear objective ---------- */
+(function(){
+  const svg=document.getElementById('obj');const W=760,H=560,S=54;
+  const B=makeBoard(svg,W,H,S);arrowMarker(svg,'cHead','var(--objective)');
+  const defaults=()=>[{a:[1,1],b:6},{a:[-1,1],b:3},{a:[0,-1],b:2},{a:[-1,-0.5],b:4},{a:[1,-2],b:5}];
+  let cons=defaults();let c=[1.6,1.0];let disc=false;const D={c:[0.5,0.5],r:3};
+  let drag=false;let anim=null;
+  const range=document.getElementById('objT'),read=document.getElementById('objRead'),status=document.getElementById('objStatus'),reveal=document.getElementById('objReveal'),consEl=document.getElementById('objCons'),formula=document.getElementById('objFormula'),setBtn=document.getElementById('objSet');
+  const gSet=el('g',{},svg),gLev=el('g',{},svg),gCut=el('g',{},svg),gOpt=el('g',{},svg),gC=el('g',{},svg);
+  let feasVerts=[],tRange=[-10,10],opt=null; // opt: {kind:'vertex'|'edge'|'point'|'unbounded', pts, value}
+  function analyse(){
+    const nc=Math.hypot(c[0],c[1]);
+    if(disc){const v=(D.c[0]*c[0]+D.c[1]*c[1])-nc*D.r;const p=[D.c[0]-D.r*c[0]/nc,D.c[1]-D.r*c[1]/nc];opt={kind:'point',pts:[p],value:v};const hi=(D.c[0]*c[0]+D.c[1]*c[1])+nc*D.r;tRange=[v-0.6,hi+0.6];feasVerts=[];return;}
+    feasVerts=intersectAll(cons,40);
+    if(feasVerts.length<3){opt={kind:'empty'};tRange=[-10,10];return;}
+    const vals=feasVerts.map(p=>c[0]*p[0]+c[1]*p[1]);const mn=Math.min(...vals),mx=Math.max(...vals);
+    const arg=feasVerts.filter((p,i)=>vals[i]<mn+1e-6);
+    const unb=arg.some(p=>Math.abs(p[0])>39.9||Math.abs(p[1])>39.9);
+    if(unb){opt={kind:'unbounded',pts:arg,value:-Infinity};}
+    else opt={kind:arg.length>1?'edge':'vertex',pts:arg,value:mn};
+    const inview=feasVerts.filter(p=>Math.abs(p[0])<8&&Math.abs(p[1])<6);const vv=inview.length?inview.map(p=>c[0]*p[0]+c[1]*p[1]):vals;
+    const lo=unb?Math.min(...vv)-6:mn;const hi=Math.min(mx,Math.max(...vv)+4);tRange=[lo-0.6,hi+0.6];
+  }
+  function levelSegment(t){ // intersection of c·x=t with feasible set, as [P,Q] or null
+    if(disc){const nc=Math.hypot(c[0],c[1]);const d=(t-(D.c[0]*c[0]+D.c[1]*c[1]))/nc;if(Math.abs(d)>D.r)return null;const h=Math.sqrt(D.r*D.r-d*d);const u=[c[0]/nc,c[1]/nc],v=[-u[1],u[0]];const m=[D.c[0]+d*u[0],D.c[1]+d*u[1]];return [[m[0]-h*v[0],m[1]-h*v[1]],[m[0]+h*v[0],m[1]+h*v[1]]];}
+    const pts=[];const n=feasVerts.length;
+    for(let i=0;i<n;i++){const P=feasVerts[i],Q=feasVerts[(i+1)%n];const sp=c[0]*P[0]+c[1]*P[1]-t,sq=c[0]*Q[0]+c[1]*Q[1]-t;
+      if(Math.abs(sp)<1e-9)pts.push(P);else if((sp<0&&sq>0)||(sp>0&&sq<0)){const u=sp/(sp-sq);pts.push([P[0]+u*(Q[0]-P[0]),P[1]+u*(Q[1]-P[1])]);}}
+    if(pts.length<2)return pts.length===1?[pts[0],pts[0]]:null;
+    let best=[pts[0],pts[1]],bd=-1;for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const d=Math.hypot(pts[i][0]-pts[j][0],pts[i][1]-pts[j][1]);if(d>bd){bd=d;best=[pts[i],pts[j]];}}return best;}
+  function render(){
+    [gSet,gLev,gCut,gOpt,gC].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+    analyse();
+    range.min=tRange[0].toFixed(2);range.max=tRange[1].toFixed(2);
+    let t=+range.value;if(t<tRange[0]||t>tRange[1]){t=Math.min(Math.max(t,tRange[0]),tRange[1]);range.value=t;}
+    // feasible set
+    if(disc){const Q=B.toS(D.c[0],D.c[1]);el('circle',{cx:Q[0],cy:Q[1],r:D.r*S,fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.5},gSet);}
+    else{cons.forEach(k=>el('path',{d:linePath(k.a,k.b,B.toS),fill:'none',stroke:'var(--rule)','stroke-width':1.2},gSet));
+      if(feasVerts.length>=3)el('path',{d:polyPath(feasVerts,B.toS),fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.5},gSet);}
+    // faint level lines
+    const nc=Math.hypot(c[0],c[1]);const step=Math.max(0.5,Math.round(nc*2)/2);
+    for(let k=-12;k<=12;k++){const tk=t+k*step;if(!k)continue;el('path',{d:linePath(c,tk,B.toS),fill:'none',stroke:'var(--objective)','stroke-width':1,opacity:0.18},gLev);}
+    el('path',{d:linePath(c,t,B.toS),fill:'none',stroke:'var(--objective)','stroke-width':2,'stroke-dasharray':'7 5'},gLev);
+    const seg=levelSegment(t);
+    if(seg){const P=B.toS(seg[0][0],seg[0][1]),Q=B.toS(seg[1][0],seg[1][1]);el('line',{x1:P[0],y1:P[1],x2:Q[0],y2:Q[1],stroke:'var(--objective)','stroke-width':5,'stroke-linecap':'round'},gCut);}
+    // optimum
+    if(reveal.checked&&opt&&opt.pts){
+      if(opt.kind==='edge'){const P=B.toS(opt.pts[0][0],opt.pts[0][1]),Q=B.toS(opt.pts[1][0],opt.pts[1][1]);el('line',{x1:P[0],y1:P[1],x2:Q[0],y2:Q[1],stroke:'var(--accent)','stroke-width':6,'stroke-linecap':'round'},gOpt);}
+      else if(opt.kind!=='unbounded'){const Q=B.toS(opt.pts[0][0],opt.pts[0][1]);el('circle',{cx:Q[0],cy:Q[1],r:8,fill:'var(--accent)'},gOpt);el('text',{x:Q[0]+12,y:Q[1]-10,'font-size':14,fill:'var(--accent)','font-style':'italic'},gOpt).textContent='x*';}
+      else{ // ray direction −c drawn from a feasible point
+        const p0=feasVerts.find(p=>Math.abs(p[0])<8&&Math.abs(p[1])<6)||[0,0];const P=B.toS(p0[0],p0[1]),Q=B.toS(p0[0]-3*c[0]/nc,p0[1]-3*c[1]/nc);
+        el('line',{x1:P[0],y1:P[1],x2:Q[0],y2:Q[1],stroke:'var(--accent)','stroke-width':2.2,'stroke-dasharray':'4 4'},gOpt);}
+    }
+    // objective vector from origin
+    const O=B.toS(0,0),T=B.toS(c[0],c[1]);
+    el('line',{x1:O[0],y1:O[1],x2:T[0],y2:T[1],stroke:'var(--objective)','stroke-width':2.4,'marker-end':'url(#cHead)'},gC);
+    el('text',{x:T[0]+10,y:T[1]-6,'font-size':15,fill:'var(--objective)','font-style':'italic'},gC).textContent='c';
+    const tip=el('circle',{cx:T[0],cy:T[1],r:12,fill:'transparent',style:'cursor:grab'},gC);
+    tip.addEventListener('pointerdown',ev=>{drag=true;svg.setPointerCapture(ev.pointerId);});
+    // panel
+    formula.innerHTML='minimise <i>c</i><sup>T</sup><i>x</i> = '+fmt(c[0])+'<i>x</i> '+(c[1]<0?'− ':'+ ')+fmt(Math.abs(c[1]))+'<i>y</i>';
+    read.innerHTML='level line <i>c</i><sup>T</sup><i>x</i> = <b>'+fmt(t)+'</b>'+(opt&&isFinite(opt.value)?' &nbsp;·&nbsp; minimum <b>'+fmt(opt.value)+'</b>':'');
+    status.className='status'+(opt&&(opt.kind==='unbounded'||opt.kind==='empty')?' warn':'');
+    status.textContent=!opt?'':opt.kind==='empty'?'The feasible set is empty.':opt.kind==='unbounded'?'Optimal cost −∞: the level line can slide forever inside the set.':opt.kind==='edge'?'The last contact is a whole edge: every point on it is optimal, including its two vertices.':opt.kind==='vertex'?'The last contact is a single vertex.':'The last contact is a boundary point — no vertex to find here.';
+    if(disc){consEl.innerHTML='<span class="brace"><i>S</i> = disc of radius 3 centred at (0.5, 0.5)</span>';}
+    else{let h='<span class="brace"><i>S</i> = { (<i>x</i>, <i>y</i>) :</span>';cons.forEach((k,i)=>{h+='<div class="row"><span class="tag" style="background:var(--feasible)"></span><span>'+ineq(k.a,k.b)+'</span><button class="x" data-i="'+i+'" aria-label="Remove constraint '+(i+1)+'">×</button></div>';});
+      h+='<span class="brace">}</span> <button class="btn" id="objResetCons" style="font-size:.8em;margin-left:.4em">Reset</button>';consEl.innerHTML=h;
+      consEl.querySelectorAll('.x').forEach(b=>{b.onclick=()=>{cons.splice(+b.dataset.i,1);render();};});
+      document.getElementById('objResetCons').onclick=()=>{cons=defaults();render();};}
+    setBtn.textContent='Feasible set: '+(disc?'disc':'polyhedron');
+  }
+  svg.addEventListener('pointermove',ev=>{if(!drag)return;const q=B.pointer(ev);if(Math.hypot(q[0],q[1])<0.2)return;c=q;render();});
+  const stop=()=>{drag=false;};svg.addEventListener('pointerup',stop);svg.addEventListener('pointercancel',stop);
+  range.addEventListener('input',()=>{if(anim){cancelAnimationFrame(anim);anim=null;}render();});
+  reveal.onchange=render;
+  setBtn.onclick=()=>{disc=!disc;render();};
+  document.getElementById('objSlide').onclick=()=>{analyse();if(!opt||!isFinite(opt.value)){if(opt&&opt.kind==='unbounded'){range.value=tRange[0];}render();return;}
+    const t0=+range.value,t1=opt.value;if(reduced){range.value=t1;render();return;}
+    if(anim)cancelAnimationFrame(anim);const start=performance.now(),dur=1400;
+    const step=now=>{const u=Math.min(1,(now-start)/dur);const e=1-Math.pow(1-u,3);range.value=t0+(t1-t0)*e;render();if(u<1)anim=requestAnimationFrame(step);else anim=null;};anim=requestAnimationFrame(step);};
+  render();range.value=(tRange[1]-0.6).toFixed(2);render();
+})();
+})();
+</script>
+</body>
+</html>
