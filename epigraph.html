@@ -92,13 +92,18 @@ label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
       <button class="btn" id="chord1">Put both points on the graph</button>
       <button class="btn" id="viol1">Look for a violation</button>
     </div>
+    <div class="controls">
+      <button class="btn" id="zin1" aria-label="Zoom in">Zoom in</button>
+      <button class="btn" id="zout1" aria-label="Zoom out">Zoom out</button>
+      <button class="btn" id="zreset1">Reset view</button>
+    </div>
     <label class="chk"><input type="checkbox" id="tan1"> Show a tangent line (drag its point along the graph)</label>
     <div class="status" id="st1"></div>
     <div class="legend">
       <span><span class="sw" style="background:var(--ok)"></span>segment inside epi <i>f</i></span>
       <span><span class="sw" style="background:var(--accent)"></span>segment leaves epi <i>f</i></span>
     </div>
-    <p class="note">Drag the two points anywhere in the shaded region. For a convex function the segment between them never leaves it; for a nonconvex one you can always find a pair where it does. With both points on the graph the segment is a chord, which is the definition of convexity itself.</p>
+    <p class="note">Drag the two points anywhere in the shaded region. For a convex function the segment between them never leaves it; for a nonconvex one you can always find a pair where it does. With both points on the graph the segment is a chord, which is the definition of convexity itself. Scroll or use the buttons to zoom; drag the background to pan.</p>
   </div>
 </section>
 
@@ -143,44 +148,51 @@ document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(
 const NS='http://www.w3.org/2000/svg';
 function el(tag,a,p){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
 const F1=[
- {id:'sq',  name:'<i>x</i>²', f:x=>x*x, dom:[-3,3], convex:true, note:'Strictly convex.'},
- {id:'abs', name:'|<i>x</i>|', f:x=>Math.abs(x), dom:[-3,3], convex:true, note:'Convex, not differentiable at 0: many lines touch the graph there from below.'},
- {id:'pl',  name:'max of affine', f:x=>Math.max(-1.3*x-0.6,0.35*x+0.3,1.7*x-1.7), dom:[-3,3], convex:true, note:'max(−1.3<i>x</i> − 0.6, 0.35<i>x</i> + 0.3, 1.7<i>x</i> − 1.7). Its epigraph is an intersection of three halfplanes — a polyhedron.'},
- {id:'exp', name:'<i>e</i><sup><i>x</i></sup>', f:x=>Math.exp(x), dom:[-3,1.8], convex:true, note:'Strictly convex.'},
- {id:'log', name:'−log <i>x</i>', f:x=>-Math.log(x), dom:[0.004,3], convex:true, note:'Convex on the domain (0, ∞) only; the epigraph lives over that domain.'},
- {id:'cub', name:'<i>x</i>³ <span class="nc">(nonconvex)</span>', f:x=>0.22*x*x*x+0.6, dom:[-3,3], convex:false, note:'Not convex (shown as 0.22<i>x</i>³ + 0.6). Concave for <i>x</i> &lt; 0.'},
- {id:'dw',  name:'double well <span class="nc">(nonconvex)</span>', f:x=>0.35*(x*x-2)*(x*x-2), dom:[-3,3], convex:false, note:'Not convex: 0.35(<i>x</i>² − 2)². Two global minimizers, a bump between them.'}
+ {id:'sq',  name:'<i>x</i>²', f:x=>x*x, dom:[-1000,1000], convex:true, note:'Strictly convex.'},
+ {id:'abs', name:'|<i>x</i>|', f:x=>Math.abs(x), dom:[-1000,1000], convex:true, note:'Convex, not differentiable at 0: many lines touch the graph there from below.'},
+ {id:'pl',  name:'max of affine', f:x=>Math.max(-1.3*x-0.6,0.35*x+0.3,1.7*x-1.7), dom:[-1000,1000], convex:true, note:'max(−1.3<i>x</i> − 0.6, 0.35<i>x</i> + 0.3, 1.7<i>x</i> − 1.7). Its epigraph is an intersection of three halfplanes — a polyhedron.'},
+ {id:'exp', name:'<i>e</i><sup><i>x</i></sup>', f:x=>Math.exp(x), dom:[-1000,60], convex:true, note:'Strictly convex.'},
+ {id:'log', name:'−log <i>x</i>', f:x=>-Math.log(x), dom:[1e-9,1000], convex:true, note:'Convex on the domain (0, ∞) only; the epigraph lives over that domain.'},
+ {id:'cub', name:'<i>x</i>³ <span class="nc">(nonconvex)</span>', f:x=>0.22*x*x*x+0.6, dom:[-1000,1000], convex:false, note:'Not convex (shown as 0.22<i>x</i>³ + 0.6). Concave for <i>x</i> &lt; 0.'},
+ {id:'dw',  name:'double well <span class="nc">(nonconvex)</span>', f:x=>0.35*(x*x-2)*(x*x-2), dom:[-1000,1000], convex:false, note:'Not convex: 0.35(<i>x</i>² − 2)². Two global minimisers, a bump between them.'}
 ];
 let fn=F1[0];
-const W=760,H=540,XR=[-3.2,3.2],YR=[-1.3,6.2];
+const W=760,H=540,XR0=[-3.2,3.2],YR0=[-1.3,6.2];let XR=XR0.slice(),YR=YR0.slice();
 const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W, sy=y=>H-(y-YR[0])/(YR[1]-YR[0])*H;
 const wx=px=>XR[0]+px/W*(XR[1]-XR[0]), wy=py=>YR[0]+(H-py)/H*(YR[1]-YR[0]);
 const b1=document.getElementById('b1');
 const gGrid=el('g',{},b1),gEpi=el('g',{},b1),gTan=el('g',{},b1),gSeg=el('g',{},b1),gPts=el('g',{},b1);
-(function grid(){for(let x=Math.ceil(XR[0]);x<=XR[1];x++){el('line',{x1:sx(x),y1:0,x2:sx(x),y2:H,stroke:'var(--grid)'},gGrid);if(x)el('text',{x:sx(x),y:sy(0)+17,'text-anchor':'middle','font-size':12,fill:'var(--muted)'},gGrid).textContent=x;}
-  for(let y=Math.ceil(YR[0]);y<=YR[1];y++){el('line',{x1:0,y1:sy(y),x2:W,y2:sy(y),stroke:'var(--grid)'},gGrid);if(y)el('text',{x:sx(0)-7,y:sy(y)+4,'text-anchor':'end','font-size':12,fill:'var(--muted)'},gGrid).textContent=y;}
-  el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
-  el('text',{x:W-10,y:sy(0)-8,'text-anchor':'end','font-size':15,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='x';
-  el('text',{x:sx(0)+8,y:18,'font-size':15,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='t';})();
+function niceStep(span){const raw=span/8,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+function fmtTick(v,st){const d=st<1?Math.min(3,Math.ceil(-Math.log10(st))):0;return (+v.toFixed(d)).toString();}
+function drawGrid(){while(gGrid.firstChild)gGrid.removeChild(gGrid.firstChild);
+  const sxs=niceStep(XR[1]-XR[0]),sys=niceStep(YR[1]-YR[0]);
+  const ax=Math.min(Math.max(sy(0),14),H-22),ay=Math.min(Math.max(sx(0),30),W-8);
+  for(let x=Math.ceil(XR[0]/sxs)*sxs;x<=XR[1]+1e-9;x+=sxs){el('line',{x1:sx(x),y1:0,x2:sx(x),y2:H,stroke:'var(--grid)'},gGrid);if(Math.abs(x)>sxs/2)el('text',{x:sx(x),y:ax+17,'text-anchor':'middle','font-size':12,fill:'var(--muted)'},gGrid).textContent=fmtTick(x,sxs);}
+  for(let y=Math.ceil(YR[0]/sys)*sys;y<=YR[1]+1e-9;y+=sys){el('line',{x1:0,y1:sy(y),x2:W,y2:sy(y),stroke:'var(--grid)'},gGrid);if(Math.abs(y)>sys/2)el('text',{x:ay-7,y:sy(y)+4,'text-anchor':'end','font-size':12,fill:'var(--muted)'},gGrid).textContent=fmtTick(y,sys);}
+  if(sy(0)>=0&&sy(0)<=H)el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);
+  if(sx(0)>=0&&sx(0)<=W)el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
+  el('text',{x:W-10,y:ax-8,'text-anchor':'end','font-size':15,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='x';
+  el('text',{x:ay+8,y:18,'font-size':15,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='t';}
+function viewDom(){const pad=0.02*(XR[1]-XR[0]);return [Math.max(fn.dom[0],XR[0]-pad),Math.min(fn.dom[1],XR[1]+pad)];}
 let P=[-1.6,3.2],Q=[1.4,4.4],T=0.8,drag=null;
 const inDom=x=>x>=fn.dom[0]&&x<=fn.dom[1];
 const inEpi=(x,y)=>inDom(x)&&y>=fn.f(x)-1e-9;
 function segOK(A,B){for(let i=0;i<=400;i++){const u=i/400;if(!inEpi(A[0]+u*(B[0]-A[0]),A[1]+u*(B[1]-A[1])))return false;}return true;}
 function deriv(x){const h=1e-4;const a=Math.max(fn.dom[0],x-h),b=Math.min(fn.dom[1],x+h);return (fn.f(b)-fn.f(a))/(b-a);}
 function render1(){
-  [gEpi,gTan,gSeg,gPts].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
-  const N=500,pts=[];const [a,b]=fn.dom;
-  for(let i=0;i<=N;i++){const x=a+(b-a)*i/N;let y=fn.f(x);y=Math.max(YR[0]-1,Math.min(YR[1]+1,y));pts.push([x,y]);}
-  const top=YR[1]+1;
+  drawGrid();[gEpi,gTan,gSeg,gPts].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+  const N=800,pts=[];const [a,b]=viewDom();const span=YR[1]-YR[0];
+  for(let i=0;i<=N;i++){const x=a+(b-a)*i/N;let y=fn.f(x);y=Math.max(YR[0]-span,Math.min(YR[1]+span,y));pts.push([x,y]);}
+  const top=YR[1]+span;
   let d='M'+sx(a)+' '+sy(top)+' '+pts.map(p=>'L'+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ')+' L'+sx(b)+' '+sy(top)+' Z';
   el('path',{d,fill:'var(--feasible-fill)'},gEpi);
   el('path',{d:pts.map((p,i)=>(i?'L':'M')+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' '),fill:'none',stroke:'var(--feasible)','stroke-width':2.4},gEpi);
-  if(fn.dom[0]>-2.9)el('line',{x1:sx(fn.dom[0]),y1:0,x2:sx(fn.dom[0]),y2:H,stroke:'var(--muted)','stroke-dasharray':'4 5'},gEpi);
+  if(fn.dom[0]>XR[0]&&fn.dom[0]>-999)el('line',{x1:sx(fn.dom[0]),y1:0,x2:sx(fn.dom[0]),y2:H,stroke:'var(--muted)','stroke-dasharray':'4 5'},gEpi);
   let xm=a,fm=Infinity;for(const p of pts)if(p[1]<fm){fm=p[1];xm=p[0];}
-  el('text',{x:sx(Math.min(Math.max(xm,a+0.35),b-0.35)),y:sy(5.55),'text-anchor':'middle','font-size':17,fill:'var(--feasible)','font-style':'italic'},gEpi).textContent='epi f';
+  const lpad=0.06*(XR[1]-XR[0]);el('text',{x:sx(Math.min(Math.max(xm,a+lpad),b-lpad)),y:sy(YR[1]-0.09*span),'text-anchor':'middle','font-size':17,fill:'var(--feasible)','font-style':'italic'},gEpi).textContent='epi f';
   // tangent
   let tanOK=null;
-  if(document.getElementById('tan1').checked){T=Math.min(Math.max(T,a+0.02),b-0.02);const fT=fn.f(T),m=deriv(T);const L=x=>fT+m*(x-T);
+  if(document.getElementById('tan1').checked){T=Math.min(Math.max(T,a+0.002*(b-a)),b-0.002*(b-a));const fT=fn.f(T),m=deriv(T);const L=x=>fT+m*(x-T);
     el('line',{x1:0,y1:sy(L(XR[0])),x2:W,y2:sy(L(XR[1])),stroke:'var(--objective)','stroke-width':2,'stroke-dasharray':'8 5'},gTan);
     tanOK=true;for(let i=0;i<=N;i++){const x=a+(b-a)*i/N;if(fn.f(x)<L(x)-1e-6){tanOK=false;break;}}
     const tc=el('circle',{cx:sx(T),cy:sy(fT),r:7,fill:'var(--objective)',style:'cursor:ew-resize'},gTan);
@@ -204,16 +216,26 @@ function render1(){
 }
 const fn1=document.getElementById('fn1');
 F1.forEach(F=>{const b=document.createElement('button');b.dataset.id=F.id;b.innerHTML=F.name;b.onclick=()=>{fn=F;fixPoints();render1();};fn1.appendChild(b);});
-function fixPoints(){for(const Pt of [P,Q]){Pt[0]=Math.min(Math.max(Pt[0],fn.dom[0]+0.05),fn.dom[1]-0.05);if(Pt[1]<fn.f(Pt[0]))Pt[1]=Math.min(YR[1]-0.3,fn.f(Pt[0])+0.8);}}
+function fixPoints(){const [a,b]=viewDom();const e=0.01*(b-a),sp=YR[1]-YR[0];for(const Pt of [P,Q]){Pt[0]=Math.min(Math.max(Pt[0],a+e),b-e);if(Pt[1]<fn.f(Pt[0]))Pt[1]=Math.min(YR[1]-0.04*sp,fn.f(Pt[0])+0.1*sp);}}
 const pt=b1.createSVGPoint();
-b1.addEventListener('pointermove',ev=>{if(!drag)return;pt.x=ev.clientX;pt.y=ev.clientY;const p=pt.matrixTransform(b1.getScreenCTM().inverse());const x=Math.min(Math.max(wx(p.x),XR[0]),XR[1]),y=Math.min(Math.max(wy(p.y),YR[0]),YR[1]);
+function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(b1.getScreenCTM().inverse());}
+let pan=null;
+b1.addEventListener('pointerdown',ev=>{if(drag)return;const p=svgPt(ev);pan={px:p.x,py:p.y,XR:XR.slice(),YR:YR.slice()};b1.setPointerCapture(ev.pointerId);b1.style.cursor='grabbing';});
+b1.addEventListener('pointermove',ev=>{if(pan&&!drag){const p=svgPt(ev);const dx=(p.x-pan.px)/W*(pan.XR[1]-pan.XR[0]),dy=(p.y-pan.py)/H*(pan.YR[1]-pan.YR[0]);XR=[pan.XR[0]-dx,pan.XR[1]-dx];YR=[pan.YR[0]+dy,pan.YR[1]+dy];render1();return;}
+  if(!drag)return;const p=svgPt(ev);const x=Math.min(Math.max(wx(p.x),XR[0]),XR[1]),y=Math.min(Math.max(wy(p.y),YR[0]),YR[1]);
   if(drag==='T')T=x;else{const Pt=drag==='P'?P:Q;Pt[0]=x;Pt[1]=y;}render1();});
-const stop=()=>drag=null;b1.addEventListener('pointerup',stop);b1.addEventListener('pointercancel',stop);
+const stop=()=>{drag=null;pan=null;b1.style.cursor='';};b1.addEventListener('pointerup',stop);b1.addEventListener('pointercancel',stop);
 document.getElementById('tan1').onchange=render1;
-document.getElementById('chord1').onclick=()=>{const [a,b]=fn.dom;let x1=a+0.25*(b-a),x2=a+0.78*(b-a);if(fn.id==='dw'){x1=-1.9;x2=1.9;}if(fn.id==='cub'){x1=-2.6;x2=0.4;}P=[x1,fn.f(x1)];Q=[x2,fn.f(x2)];render1();};
+function zoom(f,cx,cy){const w=(XR[1]-XR[0])*f;if(w<0.4||w>600)return;if(cx===undefined){cx=(XR[0]+XR[1])/2;cy=(YR[0]+YR[1])/2;}
+  XR=[cx-(cx-XR[0])*f,cx+(XR[1]-cx)*f];YR=[cy-(cy-YR[0])*f,cy+(YR[1]-cy)*f];render1();}
+b1.addEventListener('wheel',ev=>{ev.preventDefault();const p=svgPt(ev);zoom(ev.deltaY>0?1.15:1/1.15,wx(p.x),wy(p.y));},{passive:false});
+document.getElementById('zin1').onclick=()=>zoom(1/1.5);
+document.getElementById('zout1').onclick=()=>zoom(1.5);
+document.getElementById('zreset1').onclick=()=>{XR=XR0.slice();YR=YR0.slice();fixPoints();render1();};
+document.getElementById('chord1').onclick=()=>{const [a,b]=viewDom();let x1=a+0.25*(b-a),x2=a+0.78*(b-a);if(fn.id==='dw'&&a<-1.9&&b>1.9){x1=-1.9;x2=1.9;}if(fn.id==='cub'&&a<-2.6&&b>0.4){x1=-2.6;x2=0.4;}P=[x1,fn.f(x1)];Q=[x2,fn.f(x2)];render1();};
 function depth1(A,B){let d=0;for(let i=0;i<=200;i++){const u=i/200,x=A[0]+u*(B[0]-A[0]),y=A[1]+u*(B[1]-A[1]);if(inDom(x))d=Math.max(d,fn.f(x)-y);}return d;}
-document.getElementById('viol1').onclick=()=>{const [a,b]=fn.dom;let best=null,bd=1e-6;for(let k=0;k<3000;k++){const x1=a+Math.random()*(b-a),x2=a+Math.random()*(b-a);const y1=fn.f(x1)+Math.random()*0.3,y2=fn.f(x2)+Math.random()*0.3;
-    if(y1>YR[1]-0.2||y2>YR[1]-0.2||y1<YR[0]+0.2||y2<YR[0]+0.2)continue;const d=depth1([x1,y1],[x2,y2]);if(d>bd){bd=d;best=[[x1,y1],[x2,y2]];}}
+document.getElementById('viol1').onclick=()=>{const [a,b]=viewDom();const sp=YR[1]-YR[0];let best=null,bd=1e-6;for(let k=0;k<3000;k++){const x1=a+Math.random()*(b-a),x2=a+Math.random()*(b-a);const y1=fn.f(x1)+Math.random()*0.04*sp,y2=fn.f(x2)+Math.random()*0.04*sp;
+    if(y1>YR[1]-0.03*sp||y2>YR[1]-0.03*sp||y1<YR[0]+0.03*sp||y2<YR[0]+0.03*sp)continue;const d=depth1([x1,y1],[x2,y2]);if(d>bd){bd=d;best=[[x1,y1],[x2,y2]];}}
   if(best){P=best[0];Q=best[1];render1();return;}
   render1();document.getElementById('st1').innerHTML+='<br>No violation found in 3000 random pairs — as expected for a convex function.';};
 listeners.push(render1);
@@ -228,7 +250,7 @@ function init3d(){
    {id:'pl',name:'max of affine',f:(x,y)=>Math.max(0.9*x+0.35*y+0.8,-0.9*x+0.5*y+0.6,0.1*x-1.1*y+0.4),convex:true,note:'Maximum of three affine functions; the epigraph is a polyhedron.'},
    {id:'val',name:'0.6<i>x</i>²',f:(x,y)=>0.6*x*x,convex:true,note:'Convex but not strictly: flat along the <i>y</i>-direction, so chords along that direction lie on the graph.'},
    {id:'sad',name:'saddle <span class="nc">(nonconvex)</span>',f:(x,y)=>0.55*(x*x-y*y),convex:false,note:'0.55(<i>x</i>² − <i>y</i>²): convex along <i>x</i>, concave along <i>y</i>. Not convex.'},
-   {id:'dw',name:'double well <span class="nc">(nonconvex)</span>',f:(x,y)=>0.4*(x*x-1.8)*(x*x-1.8)+0.35*y*y,convex:false,note:'Two separate minimizers. Every descent method can end in either; the epigraph has a dent between them.'}
+   {id:'dw',name:'double well <span class="nc">(nonconvex)</span>',f:(x,y)=>0.4*(x*x-1.8)*(x*x-1.8)+0.35*y*y,convex:false,note:'Two separate minimisers. Every descent method can end in either; the epigraph has a dent between them.'}
   ];
   let fn2=F2[0];const DOM=1.9,ZMAX=4.2,RES=90;
   const box=document.getElementById('three');
