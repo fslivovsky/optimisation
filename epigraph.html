@@ -45,8 +45,12 @@ h1{font-weight:500;font-size:1.9em;margin:0;letter-spacing:-.01em}
 main{padding:0 clamp(20px,4vw,64px) 24px}
 .view{display:none}
 .view.on{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(270px,1fr);gap:clamp(14px,2.5vw,40px)}
-.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none;user-select:none}
-#three{width:100%;aspect-ratio:4/3;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none;cursor:grab;position:relative;overflow:hidden}
+.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:pan-x pan-y;user-select:none}
+.board .grab{touch-action:none}
+.wrap{position:relative;align-self:start}
+.zhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.42);color:#fff;font-size:1.05em;border-radius:6px;opacity:0;transition:opacity .25s}
+.zhint.on{opacity:1}
+#three{width:100%;aspect-ratio:4/3;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:pan-x pan-y;cursor:grab;position:relative;overflow:hidden}
 #three:active{cursor:grabbing}
 #three canvas{display:block}
 .panel{display:flex;flex-direction:column;gap:.85em;font-size:.92em;min-width:0}
@@ -84,7 +88,7 @@ label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
 <main>
 <!-- ============ 1D ============ -->
 <section class="view on" id="v1">
-  <div><svg id="b1" class="board" viewBox="0 0 760 540" role="img" aria-label="Graph of a function of one variable with its epigraph shaded and two draggable points joined by a segment"></svg></div>
+  <div class="wrap"><div class="zhint" id="hint1" aria-hidden="true"></div><svg id="b1" class="board" viewBox="0 0 760 540" role="img" aria-label="Graph of a function of one variable with its epigraph shaded and two draggable points joined by a segment"></svg></div>
   <div class="panel">
     <div class="fnlist" id="fn1"></div>
     <div class="formula" id="form1"></div>
@@ -103,7 +107,7 @@ label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
       <span><span class="sw" style="background:var(--ok)"></span>segment inside epi <i>f</i></span>
       <span><span class="sw" style="background:var(--accent)"></span>segment leaves epi <i>f</i></span>
     </div>
-    <p class="note">Drag the two points anywhere in the shaded region. For a convex function the segment between them never leaves it; for a nonconvex one you can always find a pair where it does. With both points on the graph the segment is a chord, which is the definition of convexity itself. Scroll or use the buttons to zoom; drag the background to pan.</p>
+    <p class="note">Drag the two points anywhere in the shaded region. For a convex function the segment between them never leaves it; for a nonconvex one you can always find a pair where it does. With both points on the graph the segment is a chord, which is the definition of convexity itself. To zoom, use the buttons or hold Ctrl (⌘ on a Mac) and scroll; drag the background to pan. On a touch screen, use two fingers to pan and pinch to zoom.</p>
   </div>
 </section>
 
@@ -123,7 +127,7 @@ label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
       <label class="chk"><input type="checkbox" id="spin2"> Rotate slowly</label>
     </div>
     <div class="status" id="st2"></div>
-    <p class="note">Drag to rotate, scroll or pinch to zoom. The epigraph is everything above the surface; it is cut off at a fixed height so it can be drawn.</p>
+    <p class="note">Drag to rotate; hold Ctrl (⌘ on a Mac) and scroll to zoom. On a touch screen, use two fingers to rotate and pinch to zoom. The epigraph is everything above the surface; it is cut off at a fixed height so it can be drawn.</p>
   </div>
 </section>
 </main>
@@ -143,6 +147,11 @@ const tabs=[...document.querySelectorAll('[role=tab]')];let started3d=false;
 function openTab(id){tabs.forEach(t=>t.setAttribute('aria-selected',t.dataset.v===id));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id===id));if(id==='v2'){if(!started3d){started3d=true;init3d();}else if(window.__resize3d)window.__resize3d();}}
 tabs.forEach(t=>t.onclick=()=>openTab(t.dataset.v));
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='1')openTab('v1');if(e.key==='2')openTab('v2');});
+
+/* ---- hint overlay shared by both tabs ---- */
+const MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent);
+function hint(el,msg){el.textContent=msg;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1100);}
+const ZOOM_MSG='Hold '+(MAC?'⌘':'Ctrl')+' and scroll to zoom';
 
 /* ================= 1D ================= */
 const NS='http://www.w3.org/2000/svg';
@@ -196,14 +205,14 @@ function render1(){
     el('line',{x1:0,y1:sy(L(XR[0])),x2:W,y2:sy(L(XR[1])),stroke:'var(--objective)','stroke-width':2,'stroke-dasharray':'8 5'},gTan);
     tanOK=true;for(let i=0;i<=N;i++){const x=a+(b-a)*i/N;if(fn.f(x)<L(x)-1e-6){tanOK=false;break;}}
     const tc=el('circle',{cx:sx(T),cy:sy(fT),r:7,fill:'var(--objective)',style:'cursor:ew-resize'},gTan);
-    const th=el('circle',{cx:sx(T),cy:sy(fT),r:16,fill:'transparent',style:'cursor:ew-resize'},gTan);th.addEventListener('pointerdown',ev=>{drag='T';b1.setPointerCapture(ev.pointerId);ev.stopPropagation();});}
+    const th=el('circle',{cx:sx(T),cy:sy(fT),r:16,fill:'transparent',style:'cursor:ew-resize',class:'grab'},gTan);th.addEventListener('pointerdown',ev=>{drag='T';b1.setPointerCapture(ev.pointerId);ev.stopPropagation();});}
   // segment coloured piecewise
   const M=240;for(let i=0;i<M;i++){const u0=i/M,u1=(i+1)/M,um=(u0+u1)/2;const X=u=>P[0]+u*(Q[0]-P[0]),Y=u=>P[1]+u*(Q[1]-P[1]);
     const ok=inEpi(X(um),Y(um));el('line',{x1:sx(X(u0)),y1:sy(Y(u0)),x2:sx(X(u1)),y2:sy(Y(u1)),stroke:ok?'var(--ok)':'var(--accent)','stroke-width':ok?3:4,'stroke-linecap':'round'},gSeg);}
   for(const [nm,Pt] of [['P',P],['Q',Q]]){const ok=inEpi(Pt[0],Pt[1]);
     el('circle',{cx:sx(Pt[0]),cy:sy(Pt[1]),r:8,fill:ok?'var(--ink)':'var(--panel)',stroke:ok?'var(--ink)':'var(--accent)','stroke-width':2},gPts);
     const lb=el('text',{x:sx(Pt[0])+12,y:sy(Pt[1])-10,'font-size':16,'font-style':'italic',fill:'var(--ink)'},gPts);lb.textContent=nm==='P'?'(x, s)':'(y, t)';
-    const hit=el('circle',{cx:sx(Pt[0]),cy:sy(Pt[1]),r:18,fill:'transparent',style:'cursor:grab'},gPts);hit.addEventListener('pointerdown',ev=>{drag=nm;b1.setPointerCapture(ev.pointerId);});}
+    const hit=el('circle',{cx:sx(Pt[0]),cy:sy(Pt[1]),r:18,fill:'transparent',style:'cursor:grab',class:'grab'},gPts);hit.addEventListener('pointerdown',ev=>{drag=nm;b1.setPointerCapture(ev.pointerId);});}
   // panel
   document.getElementById('form1').innerHTML='<i>f</i>(<i>x</i>) = '+fn.name.replace(/ ?<span class="nc">\(nonconvex\)<\/span>/,'')+'<div class="note" style="font-size:.72em;margin-top:.3em">'+fn.note+'</div>';
   const inP=inEpi(P[0],P[1]),inQ=inEpi(Q[0],Q[1]);let s;
@@ -220,7 +229,7 @@ function fixPoints(){const [a,b]=viewDom();const e=0.01*(b-a),sp=YR[1]-YR[0];for
 const pt=b1.createSVGPoint();
 function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(b1.getScreenCTM().inverse());}
 let pan=null;
-b1.addEventListener('pointerdown',ev=>{if(drag)return;const p=svgPt(ev);pan={px:p.x,py:p.y,XR:XR.slice(),YR:YR.slice()};b1.setPointerCapture(ev.pointerId);b1.style.cursor='grabbing';});
+b1.addEventListener('pointerdown',ev=>{if(drag||ev.pointerType==='touch')return;const p=svgPt(ev);pan={px:p.x,py:p.y,XR:XR.slice(),YR:YR.slice()};b1.setPointerCapture(ev.pointerId);b1.style.cursor='grabbing';});
 b1.addEventListener('pointermove',ev=>{if(pan&&!drag){const p=svgPt(ev);const dx=(p.x-pan.px)/W*(pan.XR[1]-pan.XR[0]),dy=(p.y-pan.py)/H*(pan.YR[1]-pan.YR[0]);XR=[pan.XR[0]-dx,pan.XR[1]-dx];YR=[pan.YR[0]+dy,pan.YR[1]+dy];render1();return;}
   if(!drag)return;const p=svgPt(ev);const x=Math.min(Math.max(wx(p.x),XR[0]),XR[1]),y=Math.min(Math.max(wy(p.y),YR[0]),YR[1]);
   if(drag==='T')T=x;else{const Pt=drag==='P'?P:Q;Pt[0]=x;Pt[1]=y;}render1();});
@@ -228,7 +237,15 @@ const stop=()=>{drag=null;pan=null;b1.style.cursor='';};b1.addEventListener('poi
 document.getElementById('tan1').onchange=render1;
 function zoom(f,cx,cy){const w=(XR[1]-XR[0])*f;if(w<0.4||w>600)return;if(cx===undefined){cx=(XR[0]+XR[1])/2;cy=(YR[0]+YR[1])/2;}
   XR=[cx-(cx-XR[0])*f,cx+(XR[1]-cx)*f];YR=[cy-(cy-YR[0])*f,cy+(YR[1]-cy)*f];render1();}
-b1.addEventListener('wheel',ev=>{ev.preventDefault();const p=svgPt(ev);zoom(ev.deltaY>0?1.15:1/1.15,wx(p.x),wy(p.y));},{passive:false});
+const hint1=document.getElementById('hint1');
+b1.addEventListener('wheel',ev=>{if(!(ev.ctrlKey||ev.metaKey)){hint(hint1,ZOOM_MSG);return;}ev.preventDefault();const p=svgPt(ev);zoom(Math.exp(Math.max(-0.5,Math.min(0.5,ev.deltaY*0.01))),wx(p.x),wy(p.y));},{passive:false});
+// two-finger pan and pinch zoom
+let tg=null;
+function tmid(e){const a=e.touches[0],b=e.touches[1];pt.x=(a.clientX+b.clientX)/2;pt.y=(a.clientY+b.clientY)/2;const q=pt.matrixTransform(b1.getScreenCTM().inverse());return {x:q.x,y:q.y,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};}
+b1.addEventListener('touchstart',e=>{if(e.touches.length===2){e.preventDefault();drag=null;const m=tmid(e);tg={m,XR:XR.slice(),YR:YR.slice(),wx:wx(m.x),wy:wy(m.y)};}},{passive:false});
+b1.addEventListener('touchmove',e=>{if(!tg||e.touches.length!==2)return;e.preventDefault();const m=tmid(e);let f=tg.m.d/m.d;const w0=tg.XR[1]-tg.XR[0],h0=tg.YR[1]-tg.YR[0];
+  f=Math.max(0.4/w0,Math.min(600/w0,f));const w=w0*f,h=h0*f;const x0=tg.wx-(m.x/W)*w,y0=tg.wy-((H-m.y)/H)*h;XR=[x0,x0+w];YR=[y0,y0+h];render1();},{passive:false});
+b1.addEventListener('touchend',e=>{if(e.touches.length<2)tg=null;});
 document.getElementById('zin1').onclick=()=>zoom(1/1.5);
 document.getElementById('zout1').onclick=()=>zoom(1.5);
 document.getElementById('zreset1').onclick=()=>{XR=XR0.slice();YR=YR0.slice();fixPoints();render1();};
@@ -332,13 +349,15 @@ function init3d(){
   const fnEl=document.getElementById('fn2');F2.forEach(F=>{const b=document.createElement('button');b.dataset.id=F.id;b.innerHTML=F.name;b.onclick=()=>{fn2=F;pair=null;build();};fnEl.appendChild(b);});
   // interaction
   let down=null;const cv=renderer.domElement;
-  cv.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,az,el:el3};cv.setPointerCapture(e.pointerId);});
+  cv.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;down={x:e.clientX,y:e.clientY,az,el:el3};cv.setPointerCapture(e.pointerId);});
   cv.addEventListener('pointermove',e=>{if(!down)return;az=down.az-(e.clientX-down.x)*0.008;el3=Math.max(-0.2,Math.min(1.45,down.el+(e.clientY-down.y)*0.006));});
   const up=()=>down=null;cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-  cv.addEventListener('wheel',e=>{e.preventDefault();rad=Math.max(5,Math.min(22,rad*(1+Math.sign(e.deltaY)*0.08)));},{passive:false});
-  let pinch=null;cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch={d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),r:rad};down=null;}},{passive:true});
-  cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);rad=Math.max(5,Math.min(22,pinch.r*pinch.d/d));}},{passive:true});
-  cv.addEventListener('touchend',()=>pinch=null);
+  const hint2=document.createElement('div');hint2.className='zhint';hint2.setAttribute('aria-hidden','true');box.appendChild(hint2);
+  cv.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)){hint(hint2,ZOOM_MSG);return;}e.preventDefault();rad=Math.max(5,Math.min(22,rad*Math.exp(Math.max(-0.3,Math.min(0.3,e.deltaY*0.008)))));},{passive:false});
+  let pinch=null;const tm=e=>({x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2,d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)});
+  cv.addEventListener('touchstart',e=>{if(e.touches.length===2){e.preventDefault();const m=tm(e);pinch={m,r:rad,az,el:el3};down=null;}},{passive:false});
+  cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){e.preventDefault();const m=tm(e);rad=Math.max(5,Math.min(22,pinch.r*pinch.m.d/m.d));az=pinch.az-(m.x-pinch.m.x)*0.008;el3=Math.max(-0.2,Math.min(1.45,pinch.el+(m.y-pinch.m.y)*0.006));}},{passive:false});
+  cv.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null;});
   function resize(){const w=box.clientWidth,h=box.clientHeight||w*0.75;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
   window.__resize3d=resize;window.addEventListener('resize',resize);
   listeners.push(build);
