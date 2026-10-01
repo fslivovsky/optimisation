@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Convex function visualiser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --graph:#2F6F9F; --chord:#2E7D4F; --bad:#A8325E; --z:#8F5500;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --graph:#6FB0E0; --chord:#5CC98A; --bad:#E27AA6; --z:#E3A63A;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --graph:#6FB0E0; --chord:#5CC98A; --bad:#E27AA6; --z:#E3A63A;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.45vw,22px);line-height:1.4}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5em 1.4em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em}
+main{padding:0 clamp(18px,4vw,60px) 24px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(270px,1fr);gap:clamp(14px,2.5vw,40px)}
+.wrap{position:relative;align-self:start}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:pan-x pan-y;user-select:none}
+svg.board .grab{touch-action:none}
+.zhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.42);color:#fff;font-size:1.05em;border-radius:6px;opacity:0;transition:opacity .25s}
+.zhint.on{opacity:1}
+.panel{display:flex;flex-direction:column;gap:.8em;font-size:.92em;min-width:0}
+.fnlist{display:flex;flex-wrap:wrap;gap:.35em}
+.fnlist button{font:inherit;font-size:.9em;background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:.18em .65em;cursor:pointer}
+.fnlist button[aria-pressed="true"]{border-color:var(--graph);box-shadow:inset 0 0 0 1px var(--graph)}
+.fnlist .nc{color:var(--bad);font-size:.8em}
+.group{font-size:.78em;color:var(--muted);width:100%;margin-top:.2em}
+.custom{display:flex;gap:.4em;align-items:center}
+.custom input{flex:1;min-width:0;font:inherit;font-size:.95em;padding:.2em .5em;border:1px solid var(--rule);border-radius:6px;background:var(--panel);color:var(--ink)}
+.custom input.err{border-color:var(--bad)}
+.row{display:grid;grid-template-columns:1.6em 1fr 3.4em;align-items:center;gap:.6em}
+.row label{font-style:italic;color:var(--ink-soft)}
+.row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--graph)}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .7em;align-items:center}
+button.btn{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.22em .75em;cursor:pointer}
+button.btn:hover,.fnlist button:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+.read{line-height:1.6;font-variant-numeric:tabular-nums}
+.read b{font-weight:500}
+.status{min-height:2.8em}
+.good{color:var(--chord)} .bad{color:var(--bad)}
+.note{color:var(--muted);font-size:.85em}
+.legend{display:flex;flex-wrap:wrap;gap:.3em 1.1em;font-size:.85em;color:var(--ink-soft)}
+.sw{display:inline-block;width:1.4em;height:.3em;border-radius:2px;vertical-align:middle;margin-right:.35em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Convex function visualiser</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn"><i>f</i> is convex if <i>f</i>(θ<i>x</i> + (1 − θ)<i>y</i>) ≤ θ<i>f</i>(<i>x</i>) + (1 − θ)<i>f</i>(<i>y</i>) for all <i>x</i>, <i>y</i> in its (convex) domain and all θ ∈ [0, 1]: the graph lies below every chord.</p>
+<main>
+  <div class="wrap">
+    <div class="zhint" id="hint" aria-hidden="true"></div>
+    <svg id="b" class="board" viewBox="0 0 760 520" role="img" aria-label="Graph of the selected function with points x and y, their convex combination z, and the chord between them"></svg>
+  </div>
+  <div class="panel">
+    <div class="fnlist" id="fns"></div>
+    <div class="custom">
+      <label for="expr" style="white-space:nowrap"><i>f</i>(<i>x</i>) =</label>
+      <input id="expr" type="text" spellcheck="false" autocomplete="off" placeholder="your own, e.g. x^4 - 2*x^2">
+      <button class="btn" id="plot">Plot</button>
+    </div>
+    <div class="note" id="fnnote"></div>
+    <div class="row"><label for="sx">x</label><input type="range" id="sx" min="0" max="1000" value="0"><output id="ox"></output></div>
+    <div class="row"><label for="sy">y</label><input type="range" id="sy" min="0" max="1000" value="0"><output id="oy"></output></div>
+    <div class="row"><label for="st">θ</label><input type="range" id="st" min="0" max="1" step="0.005" value="0.4"><output id="ot"></output></div>
+    <div class="controls">
+      <button class="btn" id="anim">Animate θ</button>
+      <button class="btn" id="viol">Look for a violation</button>
+      <label class="chk"><input type="checkbox" id="many"> Check many chords</label>
+    </div>
+    <div class="read" id="read"></div>
+    <div class="status" id="status"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--chord)"></span>chord above the graph</span>
+      <span><span class="sw" style="background:var(--bad)"></span>chord below the graph</span>
+    </div>
+    <div class="controls">
+      <button class="btn" id="zin">Zoom in</button>
+      <button class="btn" id="zout">Zoom out</button>
+      <button class="btn" id="zreset">Reset view</button>
+    </div>
+    <p class="note">Drag the points on the graph or on the axis, or use the sliders. To zoom, use the buttons or hold Ctrl (⌘ on a Mac) and scroll; drag the background to pan. On a touch screen, use two fingers to pan and pinch to zoom. Your own function can use + − * / ^, sin, cos, tan, exp, log, sqrt, abs, max, min, pi and e.</p>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+/* ---------- a small, safe expression parser ---------- */
+function compile(src){
+  const toks=[];const re=/\s*(\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+|[A-Za-z]+|\*\*|[-+*/^(),])/y;let m,pos=0;
+  src=src.trim();
+  while(pos<src.length){re.lastIndex=pos;m=re.exec(src);if(!m)throw new Error('Unexpected character "'+src[pos]+'"');toks.push(m[1]==='**'?'^':m[1]);pos=re.lastIndex;}
+  let i=0;const peek=()=>toks[i],eat=t=>{if(toks[i]!==t)throw new Error('Expected "'+t+'"');i++;};
+  const F={sin:Math.sin,cos:Math.cos,tan:Math.tan,exp:Math.exp,log:Math.log,ln:Math.log,sqrt:Math.sqrt,abs:Math.abs,max:Math.max,min:Math.min};
+  function expr(){let a=term();while(peek()==='+'||peek()==='-'){const op=toks[i++],b=term(),A=a;a=op==='+'?x=>A(x)+b(x):x=>A(x)-b(x);}return a;}
+  function term(){let a=unary();while(peek()==='*'||peek()==='/'||startsPrimary(peek())){let op='*';if(peek()==='*'||peek()==='/')op=toks[i++];const b=unary(),A=a;a=op==='*'?x=>A(x)*b(x):x=>A(x)/b(x);}return a;}
+  function startsPrimary(t){return t!==undefined&&(t==='('||/^[A-Za-z\d.]/.test(t));}
+  function unary(){if(peek()==='-'){i++;const a=unary();return x=>-a(x);}if(peek()==='+'){i++;return unary();}return power();}
+  function power(){const a=primary();if(peek()==='^'){i++;const b=unary();return x=>Math.pow(a(x),b(x));}return a;}
+  function primary(){const t=toks[i++];if(t===undefined)throw new Error('Unexpected end');
+    if(/^[\d.]/.test(t)){const v=parseFloat(t);return ()=>v;}
+    if(t==='('){const a=expr();eat(')');return a;}
+    if(t==='x')return x=>x;if(t==='pi')return ()=>Math.PI;if(t==='e')return ()=>Math.E;
+    if(F[t]){eat('(');const args=[expr()];while(peek()===','){i++;args.push(expr());}eat(')');const fn=F[t];return x=>fn(...args.map(g=>g(x)));}
+    throw new Error('Unknown name "'+t+'"');}
+  const f=expr();if(i<toks.length)throw new Error('Unexpected "'+toks[i]+'"');
+  return x=>{const v=f(x);return Number.isFinite(v)?v:NaN;};
+}
+
+/* ---------- functions ---------- */
+const FNS=[
+ {g:'Convex'},
+ {id:'sq',name:'<i>x</i>²',expr:'x^2',note:'Strictly convex.'},
+ {id:'abs',name:'|<i>x</i>|',expr:'abs(x)',note:'Convex, not differentiable at 0. Chords can lie on the graph: convex, not strictly convex.'},
+ {id:'exp',name:'<i>e</i><sup><i>x</i></sup>',expr:'exp(x)',note:'Strictly convex.'},
+ {id:'pl',name:'max of affine',expr:'max(-1.3*x-0.6, 0.35*x+0.3, 1.7*x-1.7)',note:'A maximum of three affine functions: convex and piecewise linear.'},
+ {id:'log',name:'−log <i>x</i>',expr:'-log(x)',note:'Convex on its domain (0, ∞).'},
+ {id:'q4',name:'<i>x</i>⁴',expr:'0.3*x^4',note:'Strictly convex, even though its second derivative is 0 at x = 0.'},
+ {g:'Not convex'},
+ {id:'cub',name:'<i>x</i>³',expr:'0.22*x^3+0.6',note:'Not convex: concave for x < 0.'},
+ {id:'dw',name:'double well',expr:'0.35*(x^2-2)^2',note:'Not convex: a bump between two minima.'},
+ {id:'sin',name:'sin <i>x</i>',expr:'sin(2*x)+1.5',note:'Not convex: it alternates between convex and concave pieces.'},
+ {id:'inv',name:'1/<i>x</i>',expr:'1/x',note:'Convex on (0, ∞) but not on ℝ∖{0}: that domain is not convex.'},
+];
+let cur=FNS[1],f=compile(cur.expr);
+
+/* ---------- board ---------- */
+const NS='http://www.w3.org/2000/svg',svg=$('b');
+const W=760,H=520,XR0=[-3.2,3.2],YR0=[-1.2,5.6];let XR=XR0.slice(),YR=YR0.slice();
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W, sy=y=>H-(y-YR[0])/(YR[1]-YR[0])*H;
+const wx=px=>XR[0]+px/W*(XR[1]-XR[0]), wy=py=>YR[0]+(H-py)/H*(YR[1]-YR[0]);
+function el(tag,a,p){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const gGrid=el('g',{},svg),gMany=el('g',{},svg),gGraph=el('g',{},svg),gChord=el('g',{},svg),gPts=el('g',{},svg);
+function niceStep(span){const raw=span/8,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+function fmtTick(v,st){const d=st<1?Math.min(3,Math.ceil(-Math.log10(st))):0;return (+v.toFixed(d)).toString();}
+const axisY=()=>Math.min(Math.max(sy(0),14),H-24);
+function drawGrid(){while(gGrid.firstChild)gGrid.removeChild(gGrid.firstChild);
+  const a=niceStep(XR[1]-XR[0]),b=niceStep(YR[1]-YR[0]);const ay=axisY(),ax=Math.min(Math.max(sx(0),30),W-8);
+  for(let x=Math.ceil(XR[0]/a)*a;x<=XR[1]+1e-9;x+=a){el('line',{x1:sx(x),y1:0,x2:sx(x),y2:H,stroke:'var(--grid)'},gGrid);if(Math.abs(x)>a/2)el('text',{x:sx(x),y:ay+17,'text-anchor':'middle','font-size':12,fill:'var(--muted)'},gGrid).textContent=fmtTick(x,a);}
+  for(let y=Math.ceil(YR[0]/b)*b;y<=YR[1]+1e-9;y+=b){el('line',{x1:0,y1:sy(y),x2:W,y2:sy(y),stroke:'var(--grid)'},gGrid);if(Math.abs(y)>b/2)el('text',{x:ax-7,y:sy(y)+4,'text-anchor':'end','font-size':12,fill:'var(--muted)'},gGrid).textContent=fmtTick(y,b);}
+  el('line',{x1:0,y1:ay,x2:W,y2:ay,stroke:'var(--axis)','stroke-width':1.3},gGrid);
+  if(sx(0)>=0&&sx(0)<=W)el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);}
+
+/* state: x and y as numbers; theta */
+let X=-1.6,Y=1.4,TH=0.4,drag=null,pan=null,animId=null;
+const ok=v=>Number.isFinite(v);
+function graphPath(){let d='',pen=false,prev=null;const N=900,span=YR[1]-YR[0];
+  for(let i=0;i<=N;i++){const x=XR[0]+(XR[1]-XR[0])*i/N,v=f(x);
+    if(!ok(v)){pen=false;prev=null;continue;}
+    const y=Math.max(YR[0]-span,Math.min(YR[1]+span,v));
+    if(prev!==null&&Math.abs(y-prev)>1.5*span)pen=false;
+    d+=(pen?'L':'M')+sx(x).toFixed(1)+' '+sy(y).toFixed(1);pen=true;prev=y;}
+  return d;}
+// chord pieces: [{a,b,ok}] in parameter s∈[0,1] from x to y; "ok" if chord ≥ graph (and graph defined)
+function chordPieces(x1,x2,M){M=M||200;const f1=f(x1),f2=f(x2),out=[];let curOk=null,start=0;
+  for(let i=0;i<M;i++){const s=(i+0.5)/M,xx=x1+s*(x2-x1),fv=f(xx),cv=f1+s*(f2-f1);const good=ok(fv)&&cv>=fv-1e-9*(1+Math.abs(fv));
+    if(curOk===null){curOk=good;start=0;}else if(good!==curOk){out.push({a:start,b:i/M,ok:curOk});start=i/M;curOk=good;}}
+  out.push({a:start,b:1,ok:curOk});return out;}
+function drawChord(g,x1,x2,width,opacity){const f1=f(x1),f2=f(x2);if(!ok(f1)||!ok(f2))return true;let allOk=true;
+  for(const p of chordPieces(x1,x2)){if(!p.ok)allOk=false;const P=[x1+p.a*(x2-x1),f1+p.a*(f2-f1)],Q=[x1+p.b*(x2-x1),f1+p.b*(f2-f1)];
+    el('line',{x1:sx(P[0]),y1:sy(P[1]),x2:sx(Q[0]),y2:sy(Q[1]),stroke:p.ok?'var(--chord)':'var(--bad)','stroke-width':p.ok?width:width+1,'stroke-linecap':'round',opacity:opacity},g);}
+  return allOk;}
+let manyPairs=[];
+function makeMany(){manyPairs=[];let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  let tries=0;while(manyPairs.length<36&&tries<2000){tries++;const a=XR[0]+rnd()*(XR[1]-XR[0]),b=XR[0]+rnd()*(XR[1]-XR[0]);
+    const fa=f(a),fb=f(b);if(ok(fa)&&ok(fb)&&fa<YR[1]&&fb<YR[1]&&fa>YR[0]&&fb>YR[0]&&Math.abs(a-b)>0.15*(XR[1]-XR[0]))manyPairs.push([a,b]);}}
+
+function render(){
+  drawGrid();[gMany,gGraph,gChord,gPts].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+  if($('many').checked){for(const [a,b] of manyPairs)drawChord(gMany,a,b,1.6,0.45);}
+  el('path',{d:graphPath(),fill:'none',stroke:'var(--graph)','stroke-width':2.6},gGraph);
+  const fx=f(X),fy=f(Y),Z=TH*X+(1-TH)*Y,fz=f(Z),cz=(ok(fx)&&ok(fy))?TH*fx+(1-TH)*fy:NaN;const ay=axisY();
+  // verticals
+  for(const [t,v] of [[X,fx],[Y,fy]])if(ok(v))el('line',{x1:sx(t),y1:ay,x2:sx(t),y2:sy(v),stroke:'var(--rule)','stroke-dasharray':'2 5'},gChord);
+  const allOk=drawChord(gChord,X,Y,3.2,1);
+  if(ok(cz)){const top=ok(fz)?Math.min(cz,fz):cz;el('line',{x1:sx(Z),y1:ay,x2:sx(Z),y2:sy(ok(fz)?Math.max(cz,fz):cz),stroke:'var(--z)','stroke-dasharray':'3 4','stroke-width':1.3},gChord);
+    if(ok(fz)&&cz<fz)el('line',{x1:sx(Z),y1:sy(cz),x2:sx(Z),y2:sy(fz),stroke:'var(--bad)','stroke-width':4,'stroke-linecap':'round'},gChord);}
+  // axis markers
+  const axisMark=(t,lab,color,handle)=>{el('line',{x1:sx(t),y1:ay-6,x2:sx(t),y2:ay+6,stroke:color,'stroke-width':2},gPts);
+    el('text',{x:sx(t),y:ay+34,'text-anchor':'middle','font-size':16,'font-style':'italic',fill:color,'font-weight':500},gPts).textContent=lab;
+    if(handle){el('circle',{cx:sx(t),cy:ay,r:7,fill:'var(--panel)',stroke:color,'stroke-width':2},gPts);
+      const h=el('circle',{cx:sx(t),cy:ay,r:18,fill:'transparent',class:'grab',style:'cursor:ew-resize'},gPts);h.addEventListener('pointerdown',ev=>{drag=handle;svg.setPointerCapture(ev.pointerId);ev.stopPropagation();});}};
+  axisMark(X,'x','var(--ink)','X');axisMark(Y,'y','var(--ink)','Y');axisMark(Z,'z','var(--z)',null);
+  // points on graph
+  if(ok(cz))el('circle',{cx:sx(Z),cy:sy(cz),r:6.5,fill:'var(--panel)',stroke:allOk||cz>=fz?'var(--chord)':'var(--bad)','stroke-width':2.2},gPts);
+  if(ok(fz))el('circle',{cx:sx(Z),cy:sy(fz),r:6,fill:'var(--z)'},gPts);
+  for(const [t,v,id] of [[X,fx,'X'],[Y,fy,'Y']])if(ok(v)){el('circle',{cx:sx(t),cy:sy(v),r:7.5,fill:'var(--ink)'},gPts);
+    const h=el('circle',{cx:sx(t),cy:sy(v),r:18,fill:'transparent',class:'grab',style:'cursor:ew-resize'},gPts);h.addEventListener('pointerdown',ev=>{drag=id;svg.setPointerCapture(ev.pointerId);ev.stopPropagation();});}
+  // sliders and readouts
+  const toS=v=>Math.round((v-XR[0])/(XR[1]-XR[0])*1000);$('sx').value=toS(X);$('sy').value=toS(Y);$('st').value=TH;
+  $('ox').textContent=X.toFixed(2);$('oy').textContent=Y.toFixed(2);$('ot').textContent=TH.toFixed(2);
+  const n=v=>ok(v)?v.toFixed(3):'undefined';
+  $('read').innerHTML='<i>z</i> = θ<i>x</i> + (1 − θ)<i>y</i> = <b>'+Z.toFixed(3)+'</b><br><i>f</i>(<i>z</i>) = <b>'+n(fz)+'</b><br>θ<i>f</i>(<i>x</i>) + (1 − θ)<i>f</i>(<i>y</i>) = <b>'+n(cz)+'</b>';
+  let st;
+  if(!ok(fx)||!ok(fy))st='<span class="bad">A point is outside the domain of <i>f</i>.</span> Move it back onto the graph.';
+  else if(!ok(fz))st='<span class="bad"><i>z</i> is outside the domain of <i>f</i>.</span> The domain is not convex, so the definition of convexity cannot hold.';
+  else{const holds=fz<=cz+1e-9*(1+Math.abs(cz));
+    st=(holds?'<span class="good">The inequality holds at this θ:</span> <i>f</i>(<i>z</i>) ≤ θ<i>f</i>(<i>x</i>) + (1 − θ)<i>f</i>(<i>y</i>).':'<span class="bad">The inequality fails at this θ:</span> <i>f</i>(<i>z</i>) &gt; θ<i>f</i>(<i>x</i>) + (1 − θ)<i>f</i>(<i>y</i>).')+'<br>'+
+      (allOk?'The whole chord lies on or above the graph.':'<span class="bad">Part of the chord lies below the graph</span>, so <i>f</i> is not convex.');}
+  $('status').innerHTML=st;
+}
+
+/* ---------- functions panel ---------- */
+const fnsEl=$('fns');
+FNS.forEach(F=>{if(F.g){const d=document.createElement('div');d.className='group';d.textContent=F.g;fnsEl.appendChild(d);return;}
+  const b=document.createElement('button');b.dataset.id=F.id;b.innerHTML=F.name;b.onclick=()=>select(F);fnsEl.appendChild(b);});
+function select(F){cur=F;f=compile(F.expr);$('expr').value=F.expr;$('expr').classList.remove('err');$('fnnote').innerHTML=F.note;
+  fnsEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.id===F.id));placeDefault();makeMany();render();}
+function placeDefault(){if(cur.id==='log'){X=0.4;Y=2.6;}else if(cur.id==='inv'){X=-1.2;Y=1.5;}else if(cur.id==='dw'){X=-1.4;Y=1.4;}else{X=-1.6;Y=1.4;}}
+function plotCustom(){const src=$('expr').value;try{f=compile(src);const test=[-2,-1,0.5,1,2].some(v=>ok(f(v)));if(!test)throw new Error('The function is undefined everywhere near 0.');
+    cur={id:'custom',expr:src};$('expr').classList.remove('err');$('fnnote').textContent='Your function. Is it convex? Look for a violation.';
+    fnsEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));makeMany();render();}
+  catch(e){$('expr').classList.add('err');$('fnnote').innerHTML='<span class="bad">'+e.message+'</span>';}}
+$('plot').onclick=plotCustom;$('expr').addEventListener('keydown',e=>{if(e.key==='Enter')plotCustom();});
+
+/* ---------- sliders and buttons ---------- */
+const fromS=v=>XR[0]+v/1000*(XR[1]-XR[0]);
+$('sx').addEventListener('input',e=>{X=fromS(+e.target.value);render();});
+$('sy').addEventListener('input',e=>{Y=fromS(+e.target.value);render();});
+$('st').addEventListener('input',e=>{TH=+e.target.value;stopAnim();render();});
+$('many').onchange=()=>{makeMany();render();};
+function stopAnim(){if(animId){cancelAnimationFrame(animId);animId=null;$('anim').textContent='Animate θ';}}
+$('anim').onclick=()=>{if(animId){stopAnim();return;}if(reduced){TH=TH>0.5?0:1;render();return;}$('anim').textContent='Stop';const t0=performance.now(),th0=TH;
+  const step=now=>{TH=0.5-0.5*Math.cos(Math.acos(1-2*th0)+(now-t0)/900);render();animId=requestAnimationFrame(step);};animId=requestAnimationFrame(step);};
+$('viol').onclick=()=>{stopAnim();let best=null,bd=0;const a=XR[0],b=XR[1];
+  for(let k=0;k<2500;k++){const x1=a+Math.random()*(b-a),x2=a+Math.random()*(b-a);const f1=f(x1),f2=f(x2);if(!ok(f1)||!ok(f2)||f1>YR[1]||f2>YR[1]||f1<YR[0]||f2<YR[0])continue;
+    for(let j=1;j<20;j++){const t=j/20,z=t*x1+(1-t)*x2,fz=f(z);const gap=ok(fz)?fz-(t*f1+(1-t)*f2):(b-a);if(gap>bd){bd=gap;best=[x1,x2,t];}}}
+  if(best){[X,Y,TH]=best;render();}else{render();$('status').innerHTML+='<br>No violation found in 2500 random pairs: consistent with a convex function (but not a proof).';}};
+
+/* ---------- dragging, panning, zooming ---------- */
+const pt=svg.createSVGPoint();
+function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+svg.addEventListener('pointerdown',ev=>{if(drag||ev.pointerType==='touch')return;const p=svgPt(ev);pan={px:p.x,py:p.y,XR:XR.slice(),YR:YR.slice()};svg.setPointerCapture(ev.pointerId);svg.style.cursor='grabbing';});
+svg.addEventListener('pointermove',ev=>{const p=svgPt(ev);
+  if(drag){const x=Math.min(Math.max(wx(p.x),XR[0]),XR[1]);if(drag==='X')X=x;else Y=x;render();return;}
+  if(pan){const dx=(p.x-pan.px)/W*(pan.XR[1]-pan.XR[0]),dy=(p.y-pan.py)/H*(pan.YR[1]-pan.YR[0]);XR=[pan.XR[0]-dx,pan.XR[1]-dx];YR=[pan.YR[0]+dy,pan.YR[1]+dy];render();}});
+const stop=()=>{if(pan)makeMany(),render();drag=null;pan=null;svg.style.cursor='';};svg.addEventListener('pointerup',stop);svg.addEventListener('pointercancel',stop);
+function zoom(k,cx,cy){const w=(XR[1]-XR[0])*k;if(w<0.4||w>600)return;if(cx===undefined){cx=(XR[0]+XR[1])/2;cy=(YR[0]+YR[1])/2;}
+  XR=[cx-(cx-XR[0])*k,cx+(XR[1]-cx)*k];YR=[cy-(cy-YR[0])*k,cy+(YR[1]-cy)*k];makeMany();render();}
+const MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent),hintEl=$('hint');
+function hint(msg){hintEl.textContent=msg;hintEl.classList.add('on');clearTimeout(hintEl._t);hintEl._t=setTimeout(()=>hintEl.classList.remove('on'),1100);}
+svg.addEventListener('wheel',ev=>{if(!(ev.ctrlKey||ev.metaKey)){hint('Hold '+(MAC?'⌘':'Ctrl')+' and scroll to zoom');return;}ev.preventDefault();const p=svgPt(ev);zoom(Math.exp(Math.max(-0.5,Math.min(0.5,ev.deltaY*0.01))),wx(p.x),wy(p.y));},{passive:false});
+let tg=null;
+function tmid(e){const a=e.touches[0],b=e.touches[1];pt.x=(a.clientX+b.clientX)/2;pt.y=(a.clientY+b.clientY)/2;const q=pt.matrixTransform(svg.getScreenCTM().inverse());return {x:q.x,y:q.y,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};}
+svg.addEventListener('touchstart',e=>{if(e.touches.length===2){e.preventDefault();drag=null;const m=tmid(e);tg={m,XR:XR.slice(),YR:YR.slice(),wx:wx(m.x),wy:wy(m.y)};}},{passive:false});
+svg.addEventListener('touchmove',e=>{if(!tg||e.touches.length!==2)return;e.preventDefault();const m=tmid(e);const w0=tg.XR[1]-tg.XR[0],h0=tg.YR[1]-tg.YR[0];let k=Math.max(0.4/w0,Math.min(600/w0,tg.m.d/m.d));
+  const w=w0*k,h=h0*k,x0=tg.wx-(m.x/W)*w,y0=tg.wy-((H-m.y)/H)*h;XR=[x0,x0+w];YR=[y0,y0+h];render();},{passive:false});
+svg.addEventListener('touchend',e=>{if(e.touches.length<2&&tg){tg=null;makeMany();render();}});
+$('zin').onclick=()=>zoom(1/1.5);$('zout').onclick=()=>zoom(1.5);$('zreset').onclick=()=>{XR=XR0.slice();YR=YR0.slice();placeDefault();makeMany();render();};
+
+select(FNS[1]);
+})();
+</script>
+</body>
+</html>
