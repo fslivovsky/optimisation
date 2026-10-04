@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slack meter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --feasible:#2F6F9F; --feasible-fill:rgba(47,111,159,.22); --pos:#2E7D4F; --active:#C9781E; --neg:#A8325E;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.24); --pos:#5CC98A; --active:#E3A63A; --neg:#E27AA6;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.24); --pos:#5CC98A; --active:#E3A63A; --neg:#E27AA6;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.45vw,22px);line-height:1.4}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:60em}
+main{padding:0 clamp(18px,4vw,60px) 24px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:clamp(14px,2.5vw,40px)}
+.wrap{align-self:start}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:pan-x pan-y;user-select:none}
+svg.board .grab{touch-action:none}
+.panel{display:flex;flex-direction:column;gap:.8em;font-size:.92em;min-width:0}
+.std{font-size:1.02em;line-height:1.7}
+.meters{display:grid;grid-template-columns:auto auto 1fr 3.6em;gap:.25em .6em;align-items:center}
+.meters .nm{font-style:italic;white-space:nowrap}
+.meters .eq{color:var(--muted);font-size:.85em;white-space:nowrap}
+.meters .bar{position:relative;height:.75em;background:var(--grid);border-radius:3px;overflow:hidden}
+.meters .bar span{position:absolute;top:0;bottom:0;left:0;border-radius:3px}
+.meters .val{text-align:right;font-variant-numeric:tabular-nums}
+.meters .row-active .nm,.meters .row-active .val{color:var(--active);font-weight:500}
+.meters .row-neg .nm,.meters .row-neg .val{color:var(--neg);font-weight:500}
+.status{min-height:3.2em}
+.st-int{color:var(--pos)} .st-act{color:var(--active)} .st-neg{color:var(--neg)}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .8em;align-items:center}
+button.btn{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.22em .75em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible,.grab:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Slack meter</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">In standard form, every inequality gets a slack variable: <i>a</i><sup>T</sup><i>x</i> ≤ <i>b</i> becomes <i>a</i><sup>T</sup><i>x</i> + <i>s</i> = <i>b</i> with <i>s</i> ≥ 0. The slack measures how far the point is from that constraint's boundary. It is zero exactly when the constraint is <b>active</b>, and negative when the constraint is violated.</p>
+<main>
+  <div class="wrap">
+    <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with a draggable point; active constraint lines are highlighted"></svg>
+  </div>
+  <div class="panel">
+    <div class="std" id="std"></div>
+    <div class="meters" id="meters" aria-live="polite"></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="controls">
+      <label class="chk"><input type="checkbox" id="snap" checked> Snap to lines and corners</label>
+      <label class="chk"><input type="checkbox" id="extra"> <span>Add the constraint <i>x</i><sub>1</sub> + 2<i>x</i><sub>2</sub> ≤ 7</span></label>
+    </div>
+    <div class="controls">
+      <button class="btn" id="tour">Visit the corners</button>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+    <p class="note">Drag the point, or click it and use the arrow keys (hold Shift for small steps). With snapping on, the point jumps onto a constraint line or corner when it gets close, so slacks become exactly zero. You may drag the point outside the polyhedron to see what a negative slack means.</p>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* constraints a·x <= b; nonnegativity x_j >= 0 handled as "variables" */
+const BASE=[{a:[1,1],b:4,lab:'x₁ + x₂ ≤ 4',html:'<i>x</i><sub>1</sub> + <i>x</i><sub>2</sub> ≤ 4'},
+            {a:[1,0],b:3,lab:'x₁ ≤ 3',html:'<i>x</i><sub>1</sub> ≤ 3'},
+            {a:[0,1],b:3,lab:'x₂ ≤ 3',html:'<i>x</i><sub>2</sub> ≤ 3'}];
+const EXTRA={a:[1,2],b:7,lab:'x₁ + 2x₂ ≤ 7',html:'<i>x</i><sub>1</sub> + 2<i>x</i><sub>2</sub> ≤ 7'};
+let cons=BASE.slice();
+let P=[1,1];
+const TOL=1e-9;
+
+/* board */
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,R0=[-0.9,5.2];
+const sx=x=>(x-R0[0])/(R0[1]-R0[0])*W, sy=y=>H-(y-R0[0])/(R0[1]-R0[0])*H;
+const wx=px=>R0[0]+px/W*(R0[1]-R0[0]), wy=py=>R0[0]+(H-py)/H*(R0[1]-R0[0]);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const gGrid=el('g',{},svg),gPoly=el('g',{},svg),gLines=el('g',{},svg),gPt=el('g',{},svg);
+(function grid(){for(let v=-0;v<=5;v++){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);
+  if(v){el('text',{x:sx(v),y:sy(0)+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;el('text',{x:sx(0)-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;}}
+  el('text',{x:W-12,y:sy(0)-8,'text-anchor':'end','font-size':16,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='x₁';
+  el('text',{x:sx(0)+8,y:18,'font-size':16,'font-style':'italic',fill:'var(--muted)'},gGrid).textContent='x₂';})();
+
+function allIneq(){ // including nonnegativity as -x_j <= 0
+  return cons.concat([{a:[-1,0],b:0,lab:'x₁ ≥ 0',nn:0},{a:[0,-1],b:0,lab:'x₂ ≥ 0',nn:1}]);}
+function clip(poly,a,b){const out=[];for(let i=0;i<poly.length;i++){const p=poly[i],q=poly[(i+1)%poly.length];const fp=a[0]*p[0]+a[1]*p[1]-b,fq=a[0]*q[0]+a[1]*q[1]-b;
+  if(fp<=1e-12)out.push(p);if((fp<-1e-12&&fq>1e-12)||(fp>1e-12&&fq<-1e-12)){const t=fp/(fp-fq);out.push([p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1])]);}}return out;}
+function polygon(){let poly=[[-50,-50],[50,-50],[50,50],[-50,50]];for(const c of allIneq())poly=clip(poly,c.a,c.b);return poly;}
+function vertices(){const C=allIneq(),V=[];for(let i=0;i<C.length;i++)for(let j=i+1;j<C.length;j++){const a=C[i].a,b=C[j].a,d=a[0]*b[1]-a[1]*b[0];if(Math.abs(d)<1e-12)continue;
+  const x=[(C[i].b*b[1]-a[1]*C[j].b)/d,(a[0]*C[j].b-C[i].b*b[0])/d];if(C.every(c=>c.a[0]*x[0]+c.a[1]*x[1]<=c.b+1e-9)&&!V.some(v=>Math.hypot(v[0]-x[0],v[1]-x[1])<1e-9))V.push(x);}
+  V.sort((p,q)=>Math.atan2(p[1]-1.3,p[0]-1.3)-Math.atan2(q[1]-1.3,q[0]-1.3));return V;}
+function linePts(c){const a=c.a,b=c.b;const n=Math.hypot(a[0],a[1]);const p=[a[0]*b/(n*n),a[1]*b/(n*n)],d=[-a[1]/n,a[0]/n];return [[p[0]-30*d[0],p[1]-30*d[1]],[p[0]+30*d[0],p[1]+30*d[1]]];}
+
+function slacks(){ // standard form variables
+  const out=[{nm:'x₁',html:'<i>x</i><sub>1</sub>',eq:'',v:P[0],con:'x₁ ≥ 0'},{nm:'x₂',html:'<i>x</i><sub>2</sub>',eq:'',v:P[1],con:'x₂ ≥ 0'}];
+  cons.forEach((c,i)=>{const v=c.b-(c.a[0]*P[0]+c.a[1]*P[1]);out.push({nm:'s'+(i+1),html:'<i>s</i><sub>'+(i+1)+'</sub>',eq:'= '+c.b+' − ('+fmtLHS(c.a)+')',v,con:c.lab});});
+  return out;}
+function fmtLHS(a){const t=[];if(a[0])t.push((a[0]===1?'':a[0])+'x₁');if(a[1])t.push((a[1]===1?'':a[1])+'x₂');return t.join(' + ');}
+const z=v=>Math.abs(v)<1e-7;
+const f2=v=>(z(v)?0:v).toFixed(2);
+
+function snapPoint(p){if(!$('snap').checked)return p;const tol=0.12;
+  // corners first (intersections of any two constraint lines, including infeasible ones)
+  const C=allIneq();let best=null,bd=tol*1.3;
+  for(let i=0;i<C.length;i++)for(let j=i+1;j<C.length;j++){const a=C[i].a,b=C[j].a,d=a[0]*b[1]-a[1]*b[0];if(Math.abs(d)<1e-12)continue;
+    const x=[(C[i].b*b[1]-a[1]*C[j].b)/d,(a[0]*C[j].b-C[i].b*b[0])/d];const dd=Math.hypot(x[0]-p[0],x[1]-p[1]);if(dd<bd){bd=dd;best=x;}}
+  if(best)return best;
+  for(const c of C){const n=Math.hypot(c.a[0],c.a[1]);const dist=(c.a[0]*p[0]+c.a[1]*p[1]-c.b)/n;if(Math.abs(dist)<tol)return [p[0]-dist*c.a[0]/n,p[1]-dist*c.a[1]/n];}
+  return p;}
+
+function render(){
+  [gPoly,gLines,gPt].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+  const poly=polygon();
+  el('path',{d:poly.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.6},gPoly);
+  const S=slacks();
+  // constraint lines, highlighted when active
+  const all=allIneq();
+  all.forEach(c=>{const v=c.b-(c.a[0]*P[0]+c.a[1]*P[1]);const act=z(v),neg=v<-1e-7;const [A,B]=linePts(c);
+    el('line',{x1:sx(A[0]),y1:sy(A[1]),x2:sx(B[0]),y2:sy(B[1]),stroke:act?'var(--active)':neg?'var(--neg)':'var(--ink-soft)','stroke-width':act?3.4:neg?2:1.2,opacity:act||neg?1:0.55,'stroke-dasharray':neg?'7 5':''},gLines);});
+  // labels for the inequality lines
+  cons.forEach((c,i)=>{const lp={0:[2.9,1.35],1:[3.08,4.3],2:[4.0,3.12]}[i]||[4.15,1.62];
+    el('text',{x:sx(lp[0]),y:sy(lp[1]),'font-size':13,fill:'var(--ink-soft)','font-style':'italic'},gLines).textContent='s'+(i+1)+' = 0';});
+  // point
+  const neg=S.some(s=>s.v<-1e-7);
+  el('circle',{cx:sx(P[0]),cy:sy(P[1]),r:9,fill:neg?'var(--neg)':'var(--ink)'},gPt);
+  const h=el('circle',{cx:sx(P[0]),cy:sy(P[1]),r:22,fill:'transparent',class:'grab',style:'cursor:grab',tabindex:0,role:'slider','aria-label':'Point ('+f2(P[0])+', '+f2(P[1])+'). Use arrow keys to move.'},gPt);
+  h.addEventListener('pointerdown',ev=>{drag=true;svg.setPointerCapture(ev.pointerId);});
+  h.addEventListener('keydown',keymove);
+  el('text',{x:sx(P[0])+14,y:sy(P[1])-12,'font-size':15,fill:'var(--ink)'},gPt).textContent='('+f2(P[0])+', '+f2(P[1])+')';
+  // standard form
+  $('std').innerHTML='<b>Standard form</b><br>'+cons.map((c,i)=>c.html.replace(' ≤ ',' + <i>s</i><sub>'+(i+1)+'</sub> = ')).join('<br>')+'<br><i>x</i><sub>1</sub>, <i>x</i><sub>2</sub>, '+cons.map((c,i)=>'<i>s</i><sub>'+(i+1)+'</sub>').join(', ')+' ≥ 0';
+  // meters
+  const maxv=5;let html='';
+  for(const s of S){const act=z(s.v),ng=s.v<-1e-7;const w=Math.min(100,Math.abs(s.v)/maxv*100);
+    html+='<div class="nm '+(act?'act':'')+'" '+'>'+s.html+'</div><div class="eq">'+(s.eq?s.eq.replace(/x₁/g,'<i>x</i><sub>1</sub>').replace(/x₂/g,'<i>x</i><sub>2</sub>'):'')+'</div><div class="bar"><span style="width:'+w+'%;background:'+(ng?'var(--neg)':'var(--pos)')+'"></span></div><div class="val">'+f2(s.v)+'</div>';}
+  $('meters').innerHTML=html;
+  // row classes (grid cells are flat; recolour name/value cells)
+  const cells=$('meters').children;S.forEach((s,k)=>{const act=z(s.v),ng=s.v<-1e-7;const cls=act?'var(--active)':ng?'var(--neg)':'';[cells[4*k],cells[4*k+3]].forEach(c=>{c.style.color=cls;c.style.fontWeight=cls?'500':'';});});
+  // status
+  const zeros=S.filter(s=>z(s.v)),negs=S.filter(s=>s.v<-1e-7);let st;
+  const list=arr=>arr.map(s=>s.html).join(', ');
+  if(negs.length)st='<span class="st-neg">Outside the polyhedron.</span> '+list(negs)+(negs.length>1?' are':' is')+' negative, so '+(negs.length>1?'those constraints are':'that constraint is')+' violated'+(zeros.length?'; '+list(zeros)+(zeros.length>1?' are':' is')+' zero.':'.')+(zeros.length>=2?' This is a <b>basic solution that is not feasible</b>: two constraint lines meet here, but outside the polyhedron.':'');
+  else if(!zeros.length)st='<span class="st-int">Inside the polyhedron.</span> All slacks are positive: no constraint is active.';
+  else if(zeros.length===1)st='<span class="st-act">On an edge.</span> '+list(zeros)+' = 0, so the constraint '+zeros[0].con+' is active.';
+  else if(zeros.length===2)st='<span class="st-act">At a corner.</span> '+list(zeros)+' are zero: two constraints are active. In the plane that is enough to pin down a point, so this is a <b>basic feasible solution</b>.';
+  else st='<span class="st-act">At a degenerate corner.</span> '+list(zeros)+' are all zero: '+zeros.length+' constraints are active, more than the 2 needed in the plane. Several choices of basis describe this same point.';
+  $('status').innerHTML=st;
+}
+
+/* interaction */
+let drag=false,tourId=null;const pt=svg.createSVGPoint();
+function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+svg.addEventListener('pointermove',ev=>{if(!drag)return;const p=svgPt(ev);P=snapPoint([Math.min(Math.max(wx(p.x),-0.8),5.1),Math.min(Math.max(wy(p.y),-0.8),5.1)]);render();});
+svg.addEventListener('pointerup',()=>drag=false);svg.addEventListener('pointercancel',()=>drag=false);
+svg.addEventListener('pointerdown',ev=>{if(drag||ev.pointerType==='touch')return;const p=svgPt(ev);P=snapPoint([wx(p.x),wy(p.y)]);drag=true;svg.setPointerCapture(ev.pointerId);stopTour();render();});
+function keymove(e){const step=e.shiftKey?0.01:0.1;let d=null;if(e.key==='ArrowLeft')d=[-step,0];if(e.key==='ArrowRight')d=[step,0];if(e.key==='ArrowUp')d=[0,step];if(e.key==='ArrowDown')d=[0,-step];
+  if(!d)return;e.preventDefault();stopTour();P=[+(P[0]+d[0]).toFixed(4),+(P[1]+d[1]).toFixed(4)];P=snapPoint(P);render();const g=svg.querySelector('.grab');if(g)g.focus();}
+$('snap').onchange=render;
+$('extra').onchange=()=>{cons=$('extra').checked?BASE.concat([EXTRA]):BASE.slice();if($('extra').checked){P=[1,3];}render();};
+$('reset').onclick=()=>{stopTour();P=[1,1];render();};
+function stopTour(){if(tourId){clearTimeout(tourId);tourId=null;$('tour').textContent='Visit the corners';}}
+$('tour').onclick=()=>{if(tourId){stopTour();return;}const V=vertices();let k=0;$('tour').textContent='Stop';
+  const step=()=>{P=V[k%V.length].slice();render();k++;if(k>V.length){stopTour();return;}tourId=setTimeout(step,reduced?2600:1600);};step();};
+render();
+})();
+</script>
+</body>
+</html>

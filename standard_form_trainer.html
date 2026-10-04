@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Standard form trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --accent:#C9781E; --good:#2E7D4F; --bad:#A8325E; --panel:#FFFFFF; --card:#ECEFEB; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --accent:#E3A63A; --good:#5CC98A; --bad:#E27AA6; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --accent:#E3A63A; --good:#5CC98A; --bad:#E27AA6; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.6em 1.2em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:62em}
+main{padding:0 clamp(18px,4vw,60px) 40px;display:grid;grid-template-columns:minmax(280px,.9fr) minmax(0,1.3fr);gap:clamp(14px,2.5vw,40px);align-items:start}
+.lp{position:sticky;top:12px;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:1em 1.2em}
+.lp h2,.steps h2{font-size:1.05em;font-weight:500;margin:0 0 .5em;color:var(--ink-soft)}
+.math{line-height:1.9}
+.math .lbl{display:inline-block;min-width:6.2em;color:var(--ink-soft)}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .7em;align-items:center;margin-top:.9em}
+button.btn,select{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.22em .75em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.score{color:var(--ink-soft);font-size:.9em;margin-top:.7em}
+.steps{display:flex;flex-direction:column;gap:.8em}
+.card{background:var(--card);border-radius:8px;padding:.85em 1.1em;border-left:4px solid transparent}
+.card.done-good{border-left-color:var(--good)} .card.done-bad{border-left-color:var(--bad)} .card.done-shown{border-left-color:var(--muted)}
+.card .q{margin-bottom:.5em}
+.card .tag{font-size:.85em;color:var(--accent);font-weight:500}
+.opts{display:flex;flex-wrap:wrap;gap:.4em}
+.opts button{font:inherit;font-size:.92em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.25em .8em;cursor:pointer;text-align:left}
+.opts button:hover:not(:disabled){border-color:var(--ink-soft)}
+.opts button:disabled{cursor:default;opacity:.55}
+.opts button.right{opacity:1;border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.opts button.wrong{opacity:1;border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.num{display:flex;gap:.5em;align-items:center;flex-wrap:wrap}
+.num input{font:inherit;width:6em;padding:.2em .45em;border:1px solid var(--rule);border-radius:6px;background:var(--panel);color:var(--ink)}
+.fb{margin-top:.5em;font-size:.92em}
+.fb .ok{color:var(--good);font-weight:500} .fb .no{color:var(--bad);font-weight:500} .fb .rev{color:var(--ink-soft);font-weight:500}
+.final{background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:1em 1.2em}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} .lp{position:static} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Standard form trainer</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">Standard form: minimise <i>c</i><sup>T</sup><i>x</i> subject to <i>Ax</i> = <i>b</i>, <i>x</i> ≥ 0. Convert the linear programme on the left one step at a time. Each answer gets immediate feedback; press <i>New problem</i> for unlimited practice.</p>
+<main>
+  <section class="lp" aria-labelledby="lpTitle">
+    <h2 id="lpTitle">The linear programme</h2>
+    <div class="math" id="lp"></div>
+    <div class="controls">
+      <button class="btn" id="new">New problem</button>
+      <label>Level <select id="level"><option value="basic">Basic</option><option value="full" selected>Full</option></select></label>
+      <button class="btn" id="solve">Show worked solution</button>
+    </div>
+    <div class="score" id="score" aria-live="polite"></div>
+    <p class="note"><b>Basic:</b> two variables, slack and surplus variables, free variables. <b>Full:</b> three variables, also equations, shifted bounds such as <i>x</i> ≥ 2, and nonpositive variables.</p>
+  </section>
+  <section class="steps" id="steps" aria-label="Conversion steps" aria-live="polite"></section>
+</main>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+/* ---------- formatting ---------- */
+const SUB=n=>'<sub>'+n+'</sub>';
+const xv=j=>'<i>x</i>'+SUB(j+1);
+const VN={orig:j=>xv(j),plus:j=>'<i>x</i>'+SUB(j+1)+'<sup>+</sup>',minus:j=>'<i>x</i>'+SUB(j+1)+'<sup>−</sup>',prime:j=>'<i>x</i>'+SUB(j+1)+'′',slack:i=>'<i>s</i>'+SUB(i+1)};
+function num(v){return v<0?'−'+Math.abs(v):String(v);}
+function expr(terms,constant){ // terms: [[coef, html]]
+  let s='';terms.forEach(([c,h])=>{if(!c)return;const a=Math.abs(c),co=a===1?'':String(a);
+    if(!s)s=(c<0?'−':'')+co+h;else s+=(c<0?' − ':' + ')+co+h;});
+  if(constant){s+=s?(constant<0?' − ':' + ')+Math.abs(constant):num(constant);}
+  return s||'0';}
+const SENSE={'<=':'≤','>=':'≥','=':'='};
+
+/* ---------- random problem ---------- */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function nz(){let v=0;while(!v)v=rnd(-3,4);return v;}
+function generate(level){
+  const n=level==='basic'?2:3,m=level==='basic'?2:3;
+  const types=level==='basic'?shuffle(['nn','free']):shuffle(['free',pick(['shift','shift','nonpos']),'nn']);
+  const vars=types.map(t=>({type:t,l:t==='shift'?rnd(1,3):0}));
+  const senses=level==='basic'?shuffle(['<=','>=']):shuffle(['<=','>=','=']);
+  const rows=senses.map(sense=>{let a;do{a=Array.from({length:n},()=>Math.random()<0.8?nz():0);}while(a.filter(v=>v).length<2);return {a,sense,b:rnd(1,12)};});
+  for(let j=0;j<n;j++)if(rows.every(r=>!r.a[j]))rows[rnd(0,m-1)].a[j]=nz();
+  const c=Array.from({length:n},()=>nz());
+  return {sense:pick(['max','min']),c,rows,vars,n,m};
+}
+
+/* ---------- the correct conversion ---------- */
+function convert(L){
+  const newVars=[],colOf=[]; // per original variable: list of [coefMultiplier, html]
+  L.vars.forEach((v,j)=>{
+    if(v.type==='nn'){colOf[j]=[[1,VN.orig(j)]];}
+    else if(v.type==='free'){colOf[j]=[[1,VN.plus(j)],[-1,VN.minus(j)]];}
+    else if(v.type==='shift'){colOf[j]=[[1,VN.prime(j)]];}
+    else {colOf[j]=[[-1,VN.prime(j)]];}
+    colOf[j].forEach(t=>newVars.push(t[1]));});
+  const sgn=L.sense==='max'?-1:1;
+  let objConst=0;L.vars.forEach((v,j)=>{if(v.type==='shift')objConst+=L.c[j]*v.l;});
+  const objTerms=[];L.vars.forEach((v,j)=>colOf[j].forEach(([k,h])=>objTerms.push([sgn*L.c[j]*k,h])));
+  const rows=[];let si=0;
+  L.rows.forEach((r,i)=>{const terms=[];L.vars.forEach((v,j)=>colOf[j].forEach(([k,h])=>terms.push([r.a[j]*k,h])));
+    let b=r.b;L.vars.forEach((v,j)=>{if(v.type==='shift')b-=r.a[j]*v.l;});
+    let slack=null;if(r.sense!=='='){slack={coef:r.sense==='<='?1:-1,html:VN.slack(si)};si++;terms.push([slack.coef,slack.html]);newVars.push(slack.html);}
+    rows.push({terms,b,slack});});
+  return {objTerms,objConst:sgn*objConst,rows,newVars,n:newVars.length,m:L.rows.length,sgn};
+}
+
+/* ---------- rendering the original LP ---------- */
+let L,C,steps,score;
+function renderLP(){
+  const varLine=L.vars.map((v,j)=>v.type==='nn'?xv(j)+' ≥ 0':v.type==='free'?xv(j)+' free':v.type==='shift'?xv(j)+' ≥ '+v.l:xv(j)+' ≤ 0').join(', &nbsp;');
+  $('lp').innerHTML='<span class="lbl">'+(L.sense==='max'?'maximise':'minimise')+'</span>'+expr(L.c.map((c,j)=>[c,xv(j)]))+'<br>'+
+    L.rows.map((r,i)=>'<span class="lbl">'+(i?'':'subject to')+'</span>'+expr(r.a.map((a,j)=>[a,xv(j)]))+' '+SENSE[r.sense]+' '+num(r.b)).join('<br>')+
+    '<br><span class="lbl"></span>'+varLine;
+}
+
+/* ---------- steps ---------- */
+function buildSteps(){
+  const S=[];
+  S.push({tag:'Objective',q:'The objective is to <b>'+(L.sense==='max'?'maximise':'minimise')+'</b>. What do you do with it?',
+    opts:['Keep it as it is','Minimise the negated objective instead','Multiply every constraint by −1'],ans:L.sense==='max'?1:0,
+    why:L.sense==='max'?'Standard form minimises. Maximising <i>c</i><sup>T</sup><i>x</i> is the same as minimising −<i>c</i><sup>T</sup><i>x</i>: the same <i>x</i> is optimal, and the optimal value changes sign.':'It is already a minimisation, so nothing changes.'});
+  L.vars.forEach((v,j)=>{const desc=v.type==='nn'?xv(j)+' ≥ 0':v.type==='free'?xv(j)+' is free (it may be negative)':v.type==='shift'?xv(j)+' ≥ '+v.l:xv(j)+' ≤ 0';
+    const opts=['Keep '+xv(j)+' as it is','Split: '+xv(j)+' = '+VN.plus(j)+' − '+VN.minus(j)+' with both ≥ 0','Shift: '+xv(j)+' = '+VN.prime(j)+' + ℓ with '+VN.prime(j)+' ≥ 0','Reflect: '+xv(j)+' = −'+VN.prime(j)+' with '+VN.prime(j)+' ≥ 0'];
+    const ans={nn:0,free:1,shift:2,nonpos:3}[v.type];
+    const why={nn:xv(j)+' is already nonnegative, which is what standard form needs.',
+      free:'Every real number is a difference of two nonnegative numbers, so '+xv(j)+' = '+VN.plus(j)+' − '+VN.minus(j)+' covers all values.',
+      shift:'Substitute '+xv(j)+' = '+VN.prime(j)+' + '+v.l+'. Then '+xv(j)+' ≥ '+v.l+' becomes '+VN.prime(j)+' ≥ 0. The constants this creates move to the right-hand sides and the objective.',
+      nonpos:'Substitute '+xv(j)+' = −'+VN.prime(j)+'. Then '+xv(j)+' ≤ 0 becomes '+VN.prime(j)+' ≥ 0, and every coefficient of '+xv(j)+' changes sign.'}[v.type];
+    S.push({tag:'Variable '+xv(j),q:'The variable '+desc+'. Which substitution makes it fit standard form?',opts,ans,why});});
+  let si=0;L.rows.forEach((r,i)=>{const sense=r.sense;const sl=sense!=='='?VN.slack(si++):null;
+    S.push({tag:'Constraint '+(i+1),q:'Constraint '+(i+1)+' is a <b>'+SENSE[sense]+'</b> constraint. What do you add to its left-hand side to make it an equation?',
+      opts:['Add a slack variable: + <i>s</i> with <i>s</i> ≥ 0','Subtract a surplus variable: − <i>s</i> with <i>s</i> ≥ 0','Nothing: it is already an equation'],ans:{'<=':0,'>=':1,'=':2}[sense],
+      why:sense==='<='?'The left-hand side is at most the right-hand side; the slack '+sl+' ≥ 0 is the unused amount, so adding it gives an equation.':sense==='>='?'The left-hand side is at least the right-hand side; the surplus '+sl+' ≥ 0 is the excess, so subtracting it gives an equation.':'Equations are already allowed in standard form.'});});
+  const shifted=L.vars.map((v,j)=>[v,j]).filter(([v])=>v.type==='shift');
+  if(shifted.length){
+    L.rows.forEach((r,i)=>{const parts=shifted.filter(([v,j])=>r.a[j]).map(([v,j])=>num(r.a[j])+'·'+v.l);
+      S.push({tag:'Right-hand side '+(i+1),num:true,q:'After the substitution '+shifted.map(([v,j])=>xv(j)+' = '+VN.prime(j)+' + '+v.l).join(', ')+', what is the right-hand side of constraint '+(i+1)+'?',ans:C.rows[i].b,
+        why:parts.length?'Moving the constant to the right: '+num(r.b)+' − ('+parts.join(' + ').replace(/\+ −/g,'− ')+') = '+num(C.rows[i].b)+'.':'Constraint '+(i+1)+' does not involve the shifted variable, so its right-hand side stays '+num(r.b)+'.'});});
+    S.push({tag:'Objective constant',num:true,q:'The substitution also creates a constant term in the objective. What is the constant in the <b>standard-form</b> (minimisation) objective?',ans:C.objConst,
+      why:'The original objective gains '+shifted.map(([v,j])=>num(L.c[j])+'·'+v.l).join(' + ')+' = '+num(C.objConst*C.sgn)+(L.sense==='max'?', and negating for minimisation gives '+num(C.objConst)+'.':'.')+' A constant does not change which point is optimal, so it can be dropped while solving and added back at the end.'});
+  }
+  S.push({tag:'Size',num:true,q:'How many variables <i>n</i> does the standard form have, including slack and surplus variables?',ans:C.n,
+    why:'The variables are '+C.newVars.join(', ')+': '+C.n+' in total.'});
+  S.push({tag:'Size',num:true,q:'How many equations <i>m</i> does it have?',ans:C.m,why:'One equation per original constraint: '+C.m+'. Converting adds variables, not equations.'});
+  return S;
+}
+function renderFinal(){
+  const d=document.createElement('div');d.className='final';
+  d.innerHTML='<h2 style="margin-top:0;font-size:1.05em;font-weight:500;color:var(--ink-soft)">The standard form</h2><div class="math">'+
+    '<span class="lbl">minimise</span>'+expr(C.objTerms,C.objConst)+'<br>'+
+    C.rows.map((r,i)=>'<span class="lbl">'+(i?'':'subject to')+'</span>'+expr(r.terms)+' = '+num(r.b)).join('<br>')+
+    '<br><span class="lbl"></span>'+C.newVars.join(', ')+' ≥ 0</div>'+
+    (C.objConst?'<p class="note">The constant '+num(C.objConst)+' can be dropped while optimising. '+(L.sense==='max'?'The optimal value of the original maximisation is minus the optimal value of this problem.':'')+'</p>':(L.sense==='max'?'<p class="note">The optimal value of the original maximisation is minus the optimal value of this problem.</p>':''));
+  $('steps').appendChild(d);}
+
+function renderStep(k){
+  if(k>=steps.length){renderFinal();updateScore();return;}
+  const s=steps[k],card=document.createElement('div');card.className='card';
+  card.innerHTML='<div class="tag">'+s.tag+'</div><div class="q">'+s.q+'</div>';
+  const fb=document.createElement('div');fb.className='fb';
+  const finish=(ok,shown)=>{s.done=true;s.ok=ok;s.shown=shown;card.classList.add(ok?'done-good':shown?'done-shown':'done-bad');
+    fb.innerHTML=(ok?'<span class="ok">Correct.</span> ':shown?'<span class="rev">Answer:</span> ':'<span class="no">Not quite.</span> ')+(s.num&&!ok?'The answer is <b>'+num(s.ans)+'</b>. ':'')+s.why;
+    updateScore();renderStep(k+1);};
+  if(s.num){const w=document.createElement('div');w.className='num';
+    const inp=document.createElement('input');inp.type='text';inp.inputMode='numeric';inp.setAttribute('aria-label',s.tag);
+    const go=document.createElement('button');go.className='btn';go.textContent='Check';
+    const check=()=>{if(s.done)return;const v=parseFloat(inp.value.replace('−','-').replace(/\s/g,''));if(!Number.isFinite(v)){inp.focus();return;}
+      inp.disabled=true;go.disabled=true;finish(Math.abs(v-s.ans)<1e-9,false);};
+    go.onclick=check;inp.addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+    w.append(inp,go);card.appendChild(w);s.reveal=()=>{inp.value=num(s.ans).replace('−','-');inp.disabled=true;go.disabled=true;finish(false,true);};
+    setTimeout(()=>inp.focus({preventScroll:true}),0);}
+  else{const o=document.createElement('div');o.className='opts';
+    const btns=s.opts.map((t,idx)=>{const b=document.createElement('button');b.innerHTML=t;b.onclick=()=>{if(s.done)return;btns.forEach(x=>x.disabled=true);
+      btns[s.ans].classList.add('right');if(idx!==s.ans)b.classList.add('wrong');finish(idx===s.ans,false);};o.appendChild(b);return b;});
+    card.appendChild(o);s.reveal=()=>{btns.forEach(x=>x.disabled=true);btns[s.ans].classList.add('right');finish(false,true);};}
+  card.appendChild(fb);$('steps').appendChild(card);
+  if(k>0)card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});
+}
+function updateScore(){const tried=steps.filter(s=>s.done&&!s.shown),ok=tried.filter(s=>s.ok),all=steps.every(s=>s.done);
+  $('score').textContent=(tried.length?`${ok.length} of ${tried.length} answered correctly first time`:'')+(all?(tried.length?' — ':'')+'conversion complete.':'');}
+function start(){L=generate($('level').value);C=convert(L);steps=buildSteps();renderLP();$('steps').innerHTML='';renderStep(0);updateScore();}
+window.__sft={generate,convert};
+$('new').onclick=start;$('level').onchange=start;
+$('solve').onclick=()=>{let guard=0;while(guard++<50){const s=steps.find(x=>!x.done);if(!s)break;s.reveal();}};
+start();
+})();
+</script>
+</body>
+</html>
