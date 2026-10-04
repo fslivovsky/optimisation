@@ -80,7 +80,7 @@ i{font-style:italic}
       <button class="btn" id="solve">Show worked solution</button>
     </div>
     <div class="score" id="score" aria-live="polite"></div>
-    <p class="note"><b>Basic:</b> two variables, slack and surplus variables, free variables. <b>Full:</b> three variables, also equations, shifted bounds such as <i>x</i> ≥ 2, and nonpositive variables.</p>
+    <p class="note"><b>Basic:</b> two variables, slack and surplus variables, free variables. <b>Full:</b> three variables, also equations, lower bounds such as <i>x</i> ≥ 2 or <i>x</i> ≥ −2, and nonpositive variables.</p>
   </section>
   <section class="steps" id="steps" aria-label="Conversion steps" aria-live="polite"></section>
 </main>
@@ -96,6 +96,8 @@ const SUB=n=>'<sub>'+n+'</sub>';
 const xv=j=>'<i>x</i>'+SUB(j+1);
 const VN={orig:j=>xv(j),plus:j=>'<i>x</i>'+SUB(j+1)+'<sup>+</sup>',minus:j=>'<i>x</i>'+SUB(j+1)+'<sup>−</sup>',prime:j=>'<i>x</i>'+SUB(j+1)+'′',slack:i=>'<i>s</i>'+SUB(i+1)};
 function num(v){return v<0?'−'+Math.abs(v):String(v);}
+function paren(v){return v<0?'('+num(v)+')':String(v);}
+function plusConst(v){return v<0?' − '+Math.abs(v):' + '+v;}
 function expr(terms,constant){ // terms: [[coef, html]]
   let s='';terms.forEach(([c,h])=>{if(!c)return;const a=Math.abs(c),co=a===1?'':String(a);
     if(!s)s=(c<0?'−':'')+co+h;else s+=(c<0?' − ':' + ')+co+h;});
@@ -111,7 +113,7 @@ function nz(){let v=0;while(!v)v=rnd(-3,4);return v;}
 function generate(level){
   const n=level==='basic'?2:3,m=level==='basic'?2:3;
   const types=level==='basic'?shuffle(['nn','free']):shuffle(['free',pick(['shift','shift','nonpos']),'nn']);
-  const vars=types.map(t=>({type:t,l:t==='shift'?rnd(1,3):0}));
+  const vars=types.map(t=>({type:t,l:t==='shift'?pick([-3,-2,-1,1,2,3]):0}));
   const senses=level==='basic'?shuffle(['<=','>=']):shuffle(['<=','>=','=']);
   const rows=senses.map(sense=>{let a;do{a=Array.from({length:n},()=>Math.random()<0.8?nz():0);}while(a.filter(v=>v).length<2);return {a,sense,b:rnd(1,12)};});
   for(let j=0;j<n;j++)if(rows.every(r=>!r.a[j]))rows[rnd(0,m-1)].a[j]=nz();
@@ -142,7 +144,7 @@ function convert(L){
 /* ---------- rendering the original LP ---------- */
 let L,C,steps,score;
 function renderLP(){
-  const varLine=L.vars.map((v,j)=>v.type==='nn'?xv(j)+' ≥ 0':v.type==='free'?xv(j)+' free':v.type==='shift'?xv(j)+' ≥ '+v.l:xv(j)+' ≤ 0').join(', &nbsp;');
+  const varLine=L.vars.map((v,j)=>v.type==='nn'?xv(j)+' ≥ 0':v.type==='free'?xv(j)+' free':v.type==='shift'?xv(j)+' ≥ '+num(v.l):xv(j)+' ≤ 0').join(', &nbsp;');
   $('lp').innerHTML='<span class="lbl">'+(L.sense==='max'?'maximise':'minimise')+'</span>'+expr(L.c.map((c,j)=>[c,xv(j)]))+'<br>'+
     L.rows.map((r,i)=>'<span class="lbl">'+(i?'':'subject to')+'</span>'+expr(r.a.map((a,j)=>[a,xv(j)]))+' '+SENSE[r.sense]+' '+num(r.b)).join('<br>')+
     '<br><span class="lbl"></span>'+varLine;
@@ -154,12 +156,12 @@ function buildSteps(){
   S.push({tag:'Objective',q:'The objective is to <b>'+(L.sense==='max'?'maximise':'minimise')+'</b>. What do you do with it?',
     opts:['Keep it as it is','Minimise the negated objective instead','Multiply every constraint by −1'],ans:L.sense==='max'?1:0,
     why:L.sense==='max'?'Standard form minimises. Maximising <i>c</i><sup>T</sup><i>x</i> is the same as minimising −<i>c</i><sup>T</sup><i>x</i>: the same <i>x</i> is optimal, and the optimal value changes sign.':'It is already a minimisation, so nothing changes.'});
-  L.vars.forEach((v,j)=>{const desc=v.type==='nn'?xv(j)+' ≥ 0':v.type==='free'?xv(j)+' is free (it may be negative)':v.type==='shift'?xv(j)+' ≥ '+v.l:xv(j)+' ≤ 0';
+  L.vars.forEach((v,j)=>{const desc=v.type==='nn'?xv(j)+' ≥ 0':v.type==='free'?xv(j)+' is free (it may be negative)':v.type==='shift'?xv(j)+' ≥ '+num(v.l):xv(j)+' ≤ 0';
     const opts=['Keep '+xv(j)+' as it is','Split: '+xv(j)+' = '+VN.plus(j)+' − '+VN.minus(j)+' with both ≥ 0','Shift: '+xv(j)+' = '+VN.prime(j)+' + ℓ with '+VN.prime(j)+' ≥ 0','Reflect: '+xv(j)+' = −'+VN.prime(j)+' with '+VN.prime(j)+' ≥ 0'];
     const ans={nn:0,free:1,shift:2,nonpos:3}[v.type];
     const why={nn:xv(j)+' is already nonnegative, which is what standard form needs.',
       free:'Every real number is a difference of two nonnegative numbers, so '+xv(j)+' = '+VN.plus(j)+' − '+VN.minus(j)+' covers all values.',
-      shift:'Substitute '+xv(j)+' = '+VN.prime(j)+' + '+v.l+'. Then '+xv(j)+' ≥ '+v.l+' becomes '+VN.prime(j)+' ≥ 0. The constants this creates move to the right-hand sides and the objective.',
+      shift:'Substitute '+xv(j)+' = '+VN.prime(j)+plusConst(v.l)+'. Then '+xv(j)+' ≥ '+num(v.l)+' becomes '+VN.prime(j)+' ≥ 0. The constants this creates move to the right-hand sides and the objective.'+(v.l<0?' A negative lower bound is shifted in exactly the same way: there is no need to split '+xv(j)+', because it cannot go below '+num(v.l)+'.':''),
       nonpos:'Substitute '+xv(j)+' = −'+VN.prime(j)+'. Then '+xv(j)+' ≤ 0 becomes '+VN.prime(j)+' ≥ 0, and every coefficient of '+xv(j)+' changes sign.'}[v.type];
     S.push({tag:'Variable '+xv(j),q:'The variable '+desc+'. Which substitution makes it fit standard form?',opts,ans,why});});
   let si=0;L.rows.forEach((r,i)=>{const sense=r.sense;const sl=sense!=='='?VN.slack(si++):null;
@@ -168,11 +170,11 @@ function buildSteps(){
       why:sense==='<='?'The left-hand side is at most the right-hand side; the slack '+sl+' ≥ 0 is the unused amount, so adding it gives an equation.':sense==='>='?'The left-hand side is at least the right-hand side; the surplus '+sl+' ≥ 0 is the excess, so subtracting it gives an equation.':'Equations are already allowed in standard form.'});});
   const shifted=L.vars.map((v,j)=>[v,j]).filter(([v])=>v.type==='shift');
   if(shifted.length){
-    L.rows.forEach((r,i)=>{const parts=shifted.filter(([v,j])=>r.a[j]).map(([v,j])=>num(r.a[j])+'·'+v.l);
-      S.push({tag:'Right-hand side '+(i+1),num:true,q:'After the substitution '+shifted.map(([v,j])=>xv(j)+' = '+VN.prime(j)+' + '+v.l).join(', ')+', what is the right-hand side of constraint '+(i+1)+'?',ans:C.rows[i].b,
-        why:parts.length?'Moving the constant to the right: '+num(r.b)+' − ('+parts.join(' + ').replace(/\+ −/g,'− ')+') = '+num(C.rows[i].b)+'.':'Constraint '+(i+1)+' does not involve the shifted variable, so its right-hand side stays '+num(r.b)+'.'});});
+    L.rows.forEach((r,i)=>{const parts=shifted.filter(([v,j])=>r.a[j]).map(([v,j])=>paren(r.a[j])+'·'+paren(v.l));
+      S.push({tag:'Right-hand side '+(i+1),num:true,q:'After the substitution '+shifted.map(([v,j])=>xv(j)+' = '+VN.prime(j)+plusConst(v.l)).join(', ')+', what is the right-hand side of constraint '+(i+1)+'?',ans:C.rows[i].b,
+        why:parts.length?'Moving the constant to the right: '+num(r.b)+' − '+parts.join(' − ')+' = '+num(C.rows[i].b)+'.':'Constraint '+(i+1)+' does not involve the shifted variable, so its right-hand side stays '+num(r.b)+'.'});});
     S.push({tag:'Objective constant',num:true,q:'The substitution also creates a constant term in the objective. What is the constant in the <b>standard-form</b> (minimisation) objective?',ans:C.objConst,
-      why:'The original objective gains '+shifted.map(([v,j])=>num(L.c[j])+'·'+v.l).join(' + ')+' = '+num(C.objConst*C.sgn)+(L.sense==='max'?', and negating for minimisation gives '+num(C.objConst)+'.':'.')+' A constant does not change which point is optimal, so it can be dropped while solving and added back at the end.'});
+      why:'The original objective gains '+shifted.map(([v,j])=>paren(L.c[j])+'·'+paren(v.l)).join(' + ')+' = '+num(C.objConst*C.sgn)+(L.sense==='max'?', and negating for minimisation gives '+num(C.objConst)+'.':'.')+' A constant does not change which point is optimal, so it can be dropped while solving and added back at the end.'});
   }
   S.push({tag:'Size',num:true,q:'How many variables <i>n</i> does the standard form have, including slack and surplus variables?',ans:C.n,
     why:'The variables are '+C.newVars.join(', ')+': '+C.n+' in total.'});
