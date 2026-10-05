@@ -53,6 +53,9 @@ label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
 .good{color:var(--good)} .bad{color:var(--bad)} .neutral{color:var(--ink-soft)}
 .note{color:var(--muted);font-size:.85em}
 i{font-style:italic}
+.zhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.42);color:#fff;font-size:1.05em;border-radius:6px;opacity:0;transition:opacity .25s}
+.zhint.on{opacity:1}
+.wrap{position:relative;align-self:start}
 @media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
 </style>
 </head>
@@ -64,7 +67,10 @@ i{font-style:italic}
 </header>
 <p class="defn">A point <i>z</i> ∈ <i>P</i> is <b>not</b> an extreme point if you can write <i>z</i> = θ<i>x</i> + (1 − θ)<i>y</i> with <i>x</i>, <i>y</i> ∈ <i>P</i>, both different from <i>z</i>, and θ ∈ (0, 1). Choose a point <i>z</i>, then look for such <i>x</i>, <i>y</i> and θ. Here <i>P</i> is the running example: <i>x</i><sub>1</sub> + <i>x</i><sub>2</sub> ≤ 4, <i>x</i><sub>1</sub> ≤ 3, <i>x</i><sub>2</sub> ≤ 3, <i>x</i> ≥ 0.</p>
 <main>
-  <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with draggable points p, y and z and the segment between y and z"></svg>
+  <div class="wrap">
+    <div class="zhint" id="hint" aria-hidden="true"></div>
+    <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with draggable points p, y and z and the segment between y and z"></svg>
+  </div>
   <div class="panel">
     <div class="row"><label for="th">θ</label><input type="range" id="th" min="0.05" max="0.95" step="0.01" value="0.5"><output id="tho"></output></div>
     <label class="chk"><input type="checkbox" id="follow" checked> <span><i>y</i> follows <i>x</i>, so that θ<i>x</i> + (1 − θ)<i>y</i> = <i>z</i> always</span></label>
@@ -76,7 +82,12 @@ i{font-style:italic}
     <label class="chk"><input type="checkbox" id="snap" checked> <span>Snap points to edges and corners</span></label>
     <div class="read" id="read"></div>
     <div class="status" id="status" aria-live="polite"></div>
-    <p class="note">Drag <i>z</i> (black), <i>x</i> and <i>y</i> (orange), or select a point and use the arrow keys. With snapping on, points jump onto an edge or corner of <i>P</i> when they get very close. With "<i>y</i> follows <i>x</i>" switched on, moving <i>x</i> or θ automatically places <i>y</i> on the other side of <i>z</i>, so the question becomes: can you keep both <i>x</i> and <i>y</i> inside <i>P</i>? At a corner you never can.</p>
+        <div class="controls">
+      <button class="btn" id="zin">Zoom in</button>
+      <button class="btn" id="zout">Zoom out</button>
+      <button class="btn" id="zreset">Reset view</button>
+    </div>
+    <p class="note">Drag <i>z</i> (black), <i>x</i> and <i>y</i> (orange), or select a point and use the arrow keys. With snapping on, points jump onto an edge or corner of <i>P</i> when they get very close. With "<i>y</i> follows <i>x</i>" switched on, moving <i>x</i> or θ automatically places <i>y</i> on the other side of <i>z</i>, so the question becomes: can you keep both <i>x</i> and <i>y</i> inside <i>P</i>? At a corner you never can. To zoom, use the buttons or hold Ctrl (⌘ on a Mac) and scroll; drag the background to pan. On a touch screen, use two fingers to pan and pinch to zoom.</p>
   </div>
 </main>
 <script>
@@ -95,16 +106,23 @@ const f2=v=>(Math.abs(v)<5e-4?0:v).toFixed(2).replace('-','−');
 const fp=q=>'('+f2(q[0])+', '+f2(q[1])+')';
 
 /* board */
-const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,R=[-1,5];
-const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>H-(y-R[0])/(R[1]-R[0])*H;
-const wx=px=>R[0]+px/W*(R[1]-R[0]), wy=py=>R[0]+(H-py)/H*(R[1]-R[0]);
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,V0=[-1,5];let XR=V0.slice(),YR=V0.slice();
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W, sy=y=>H-(y-YR[0])/(YR[1]-YR[0])*H;
+const wx=px=>XR[0]+px/W*(XR[1]-XR[0]), wy=py=>YR[0]+(H-py)/H*(YR[1]-YR[0]);
 function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
 const gGrid=el('g',{},svg),gPoly=el('g',{},svg),gSeg=el('g',{},svg),gPts=el('g',{},svg);
-for(let v=0;v<=5;v++){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);
-  if(v){el('text',{x:sx(v),y:sy(0)+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;el('text',{x:sx(0)-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;}}
-el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
+function drawPoly(){while(gPoly.firstChild)gPoly.removeChild(gPoly.firstChild);
 el('path',{d:CORNERS.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.6},gPoly);
-el('text',{x:sx(1.1),y:sy(1.4),'font-size':22,'font-style':'italic',fill:'var(--feasible)',opacity:.7},gPoly).textContent='P';
+  el('text',{x:sx(1.1),y:sy(1.4),'font-size':22,'font-style':'italic',fill:'var(--feasible)',opacity:.7},gPoly).textContent='P';
+  }
+function niceStep(span){const raw=span/7,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+function fmtTick(v,st){const d=st<1?Math.min(3,Math.ceil(-Math.log10(st))):0;return (+v.toFixed(d)).toString().replace('-','−');}
+function drawGrid(){while(gGrid.firstChild)gGrid.removeChild(gGrid.firstChild);const st=niceStep(XR[1]-XR[0]);
+  const ay=Math.min(Math.max(sy(0),14),H-22),ax=Math.min(Math.max(sx(0),30),W-8);
+  for(let v=Math.ceil(XR[0]/st)*st;v<=XR[1]+1e-9;v+=st){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);if(Math.abs(v)>st/2)el('text',{x:sx(v),y:ay+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=fmtTick(v,st);}
+  for(let v=Math.ceil(YR[0]/st)*st;v<=YR[1]+1e-9;v+=st){el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);if(Math.abs(v)>st/2)el('text',{x:ax-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=fmtTick(v,st);}
+  if(sy(0)>=0&&sy(0)<=H)el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);
+  if(sx(0)>=0&&sx(0)<=W)el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);}
 
 /* state */
 let p=[2,2],y=[1.5,2.5],z=[2.5,1.5],TH=0.5,drag=null;
@@ -119,7 +137,7 @@ function snapEdge(q){if(!$('snap').checked)return q;let best=null,bd=0.15;
 function follow(){if($('follow').checked){z=[(p[0]-TH*y[0])/(1-TH),(p[1]-TH*y[1])/(1-TH)];}}
 
 function render(){
-  while(gSeg.firstChild)gSeg.removeChild(gSeg.firstChild);while(gPts.firstChild)gPts.removeChild(gPts.firstChild);
+  drawGrid();drawPoly();while(gSeg.firstChild)gSeg.removeChild(gSeg.firstChild);while(gPts.firstChild)gPts.removeChild(gPts.firstChild);
   const zt=lin(TH,y,z);const yIn=inP(y),zIn=inP(z),pIn=inP(p);
   // segment y-z, coloured by feasibility of its ends
   el('line',{x1:sx(y[0]),y1:sy(y[1]),x2:sx(z[0]),y2:sy(z[1]),stroke:yIn&&zIn?'var(--seg)':'var(--bad)','stroke-width':3,'stroke-dasharray':yIn&&zIn?'':'7 5'},gSeg);
@@ -127,9 +145,9 @@ function render(){
   el('circle',{cx:sx(zt[0]),cy:sy(zt[1]),r:6,fill:'var(--panel)',stroke:'var(--seg)','stroke-width':2},gSeg);
   if(dist(zt,p)>1e-6)el('text',{x:sx(zt[0])+10,y:sy(zt[1])+20,'font-size':13,fill:'var(--seg)'},gSeg).textContent='θx + (1 − θ)y';
   // marker when z lies outside the visible area
-  const inView=q=>q[0]>=R[0]&&q[0]<=R[1]&&q[1]>=R[0]&&q[1]<=R[1];
+  const inView=q=>q[0]>=XR[0]&&q[0]<=XR[1]&&q[1]>=YR[0]&&q[1]<=YR[1];
   if(!inView(z)){let t=1;const d=[z[0]-p[0],z[1]-p[1]];
-    for(const [k,lim] of [[0,R[0]],[0,R[1]],[1,R[0]],[1,R[1]]]){if(Math.abs(d[k])>1e-12){const tt=(lim-p[k])/d[k];if(tt>0&&tt<t)t=tt;}}
+    for(const [k,lim] of [[0,XR[0]],[0,XR[1]],[1,YR[0]],[1,YR[1]]]){if(Math.abs(d[k])>1e-12){const tt=(lim-p[k])/d[k];if(tt>0&&tt<t)t=tt;}}
     const e=[p[0]+t*d[0]*0.97,p[1]+t*d[1]*0.97],ang=Math.atan2(-(d[1]),d[0]);const X=sx(e[0]),Y=sy(e[1]);
     const tri=[[12,0],[-7,-7],[-7,7]].map(([u,v])=>[X+u*Math.cos(ang)-v*Math.sin(ang),Y+u*Math.sin(ang)+v*Math.cos(ang)]);
     el('path',{d:'M'+tri.map(q=>q.join(' ')).join(' L')+' Z',fill:'var(--bad)'},gSeg);
@@ -159,7 +177,7 @@ function render(){
 /* interaction */
 const pt=svg.createSVGPoint();
 function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
-const clampV=q=>[Math.min(Math.max(q[0],-0.9),4.9),Math.min(Math.max(q[1],-0.9),4.9)];
+const clampV=q=>[Math.min(Math.max(q[0],XR[0]),XR[1]),Math.min(Math.max(q[1],YR[0]),YR[1])];
 function moveTo(id,q){if(id==='p'){p=snapP(clampV(q));}else if(id==='y'){y=snapEdge(clampV(q));}else{z=snapEdge(clampV(q));}follow();render();}
 svg.addEventListener('pointermove',ev=>{if(!drag)return;const s=svgPt(ev);moveTo(drag,[wx(s.x),wy(s.y)]);});
 svg.addEventListener('pointerup',()=>drag=null);svg.addEventListener('pointercancel',()=>drag=null);
@@ -179,6 +197,23 @@ $('witness').onclick=()=>{
     if(e>be){be=e;best=d;}}
   if(!best){render();$('status').innerHTML='<span class="good">No witness exists: <i>z</i> is an extreme point.</span> Every direction you could move <i>x</i> in sends <i>y</i> = 2<i>z</i> − <i>x</i> out of <i>P</i>, because two linearly independent constraints are active at <i>z</i>.';return;}
   const e=Math.min(be,1.2)*0.8;TH=0.5;$('th').value=0.5;y=[p[0]+e*best[0],p[1]+e*best[1]];follow();if(!$('follow').checked)z=[p[0]-e*best[0],p[1]-e*best[1]];render();};
+/* ---- zoom and pan ---- */
+let panS=null,tg=null;
+svg.addEventListener('pointerdown',ev=>{if(drag||ev.pointerType==='touch')return;const q=svgPt(ev);panS={px:q.x,py:q.y,XR:XR.slice(),YR:YR.slice()};svg.setPointerCapture(ev.pointerId);});
+svg.addEventListener('pointermove',ev=>{if(!panS||drag)return;const q=svgPt(ev);const dx=(q.x-panS.px)/W*(panS.XR[1]-panS.XR[0]),dy=(q.y-panS.py)/H*(panS.YR[1]-panS.YR[0]);
+  if(Math.hypot(q.x-panS.px,q.y-panS.py)<3)return;svg.style.cursor='grabbing';XR=[panS.XR[0]-dx,panS.XR[1]-dx];YR=[panS.YR[0]+dy,panS.YR[1]+dy];render();});
+const endPan=()=>{panS=null;svg.style.cursor='';};svg.addEventListener('pointerup',endPan);svg.addEventListener('pointercancel',endPan);
+function zoom(k,cx,cy){const w=(XR[1]-XR[0])*k;if(w<0.8||w>80)return;if(cx===undefined){cx=(XR[0]+XR[1])/2;cy=(YR[0]+YR[1])/2;}
+  XR=[cx-(cx-XR[0])*k,cx+(XR[1]-cx)*k];YR=[cy-(cy-YR[0])*k,cy+(YR[1]-cy)*k];render();}
+const MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent),hintEl=$('hint');
+function hint(msg){hintEl.textContent=msg;hintEl.classList.add('on');clearTimeout(hintEl._t);hintEl._t=setTimeout(()=>hintEl.classList.remove('on'),1100);}
+svg.addEventListener('wheel',ev=>{if(!(ev.ctrlKey||ev.metaKey)){hint('Hold '+(MAC?'⌘':'Ctrl')+' and scroll to zoom');return;}ev.preventDefault();const q=svgPt(ev);zoom(Math.exp(Math.max(-0.5,Math.min(0.5,ev.deltaY*0.01))),wx(q.x),wy(q.y));},{passive:false});
+function tmid(e){const a=e.touches[0],b=e.touches[1];pt.x=(a.clientX+b.clientX)/2;pt.y=(a.clientY+b.clientY)/2;const q=pt.matrixTransform(svg.getScreenCTM().inverse());return {x:q.x,y:q.y,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};}
+svg.addEventListener('touchstart',e=>{if(e.touches.length===2){e.preventDefault();drag=null;const m=tmid(e);tg={m,XR:XR.slice(),YR:YR.slice(),wx:wx(m.x),wy:wy(m.y)};}},{passive:false});
+svg.addEventListener('touchmove',e=>{if(!tg||e.touches.length!==2)return;e.preventDefault();const m=tmid(e);const w0=tg.XR[1]-tg.XR[0],h0=tg.YR[1]-tg.YR[0];const k=Math.max(0.8/w0,Math.min(80/w0,tg.m.d/m.d));
+  const w=w0*k,h=h0*k,x0=tg.wx-(m.x/W)*w,y0=tg.wy-((H-m.y)/H)*h;XR=[x0,x0+w];YR=[y0,y0+h];render();},{passive:false});
+svg.addEventListener('touchend',e=>{if(e.touches.length<2)tg=null;});
+$('zin').onclick=()=>zoom(1/1.5);$('zout').onclick=()=>zoom(1.5);$('zreset').onclick=()=>{XR=V0.slice();YR=V0.slice();render();};
 follow();render();
 })();
 </script>

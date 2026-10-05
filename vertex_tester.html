@@ -52,6 +52,9 @@ label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
 .found span.on{border-color:var(--good);color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
 .note{color:var(--muted);font-size:.85em}
 i{font-style:italic}
+.zhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.42);color:#fff;font-size:1.05em;border-radius:6px;opacity:0;transition:opacity .25s}
+.zhint.on{opacity:1}
+.wrap{position:relative;align-self:start}
 @media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
 </style>
 </head>
@@ -63,7 +66,10 @@ i{font-style:italic}
 </header>
 <p class="defn">A point <i>x</i> ∈ <i>P</i> is a <b>vertex</b> if some vector <i>c</i> makes <i>x</i> the <b>unique</b> minimiser of <i>c</i><sup>T</sup><i>y</i> over <i>P</i>. Drag the tip of <i>c</i>: the minimisers of <i>c</i><sup>T</sup><i>y</i> are the points of <i>P</i> furthest in the direction −<i>c</i>. Can you find a <i>c</i> for every corner of the running example?</p>
 <main>
-  <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with a draggable objective vector c from the origin; the minimisers of c transpose y are highlighted"></svg>
+  <div class="wrap">
+    <div class="zhint" id="hint" aria-hidden="true"></div>
+    <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with a draggable objective vector c from the origin; the minimisers of c transpose y are highlighted"></svg>
+  </div>
   <div class="panel">
     <div class="read" id="read"></div>
     <div class="status" id="status" aria-live="polite"></div>
@@ -79,7 +85,12 @@ i{font-style:italic}
       <button class="btn" id="tie">Show a tie</button>
       <button class="btn" id="reset">Reset</button>
     </div>
-    <p class="note">Drag the orange arrow tip, or select it and use the arrow keys (hold Shift for small steps). With snapping on, the tip jumps to multiples of ½ when it gets close, which makes ties between two corners easy to hit. The faint lines are level lines <i>c</i><sup>T</sup><i>y</i> = constant; the bold one is the lowest level that still touches <i>P</i>.</p>
+    <div class="controls">
+      <button class="btn" id="zin">Zoom in</button>
+      <button class="btn" id="zout">Zoom out</button>
+      <button class="btn" id="zreset">Reset view</button>
+    </div>
+    <p class="note">Drag the orange arrow tip, or select it and use the arrow keys (hold Shift for small steps). With snapping on, the tip jumps to multiples of ½ when it gets close, which makes ties between two corners easy to hit. The faint lines are level lines <i>c</i><sup>T</sup><i>y</i> = constant; the bold one is the lowest level that still touches <i>P</i>. To zoom, use the buttons or hold Ctrl (⌘ on a Mac) and scroll; drag the background to pan. On a touch screen, use two fingers to pan and pinch to zoom.</p>
   </div>
 </main>
 <script>
@@ -91,23 +102,30 @@ $('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.th
 const CORNERS=[[0,0],[3,0],[3,1],[1,3],[0,3]];
 const f2=v=>(Math.abs(v)<5e-4?0:v).toFixed(2).replace('-','−');
 const fp=q=>'('+f2(q[0])+', '+f2(q[1])+')';
-const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,R=[-2.2,5];
-const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>H-(y-R[0])/(R[1]-R[0])*H;
-const wx=px=>R[0]+px/W*(R[1]-R[0]), wy=py=>R[0]+(H-py)/H*(R[1]-R[0]);
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,V0=[-2.2,5];let XR=V0.slice(),YR=V0.slice();
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W, sy=y=>H-(y-YR[0])/(YR[1]-YR[0])*H;
+const wx=px=>XR[0]+px/W*(XR[1]-XR[0]), wy=py=>YR[0]+(H-py)/H*(YR[1]-YR[0]);
 function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
 const gGrid=el('g',{},svg),gLev=el('g',{},svg),gPoly=el('g',{},svg),gOpt=el('g',{},svg),gVec=el('g',{},svg);
-for(let v=-2;v<=5;v++){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);
-  if(v){el('text',{x:sx(v),y:sy(0)+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;el('text',{x:sx(0)-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;}}
-el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
 const defs=el('defs',{},svg);const mk=el('marker',{id:'ah',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},defs);el('path',{d:'M0 0L10 5L0 10z',fill:'var(--obj)'},mk);
+function drawPoly(){while(gPoly.firstChild)gPoly.removeChild(gPoly.firstChild);
 el('path',{d:CORNERS.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.6},gPoly);
 CORNERS.forEach(q=>el('circle',{cx:sx(q[0]),cy:sy(q[1]),r:4,fill:'var(--feasible)'},gPoly));
+}
+function niceStep(span){const raw=span/7,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+function fmtTick(v,st){const d=st<1?Math.min(3,Math.ceil(-Math.log10(st))):0;return (+v.toFixed(d)).toString().replace('-','−');}
+function drawGrid(){while(gGrid.firstChild)gGrid.removeChild(gGrid.firstChild);const st=niceStep(XR[1]-XR[0]);
+  const ay=Math.min(Math.max(sy(0),14),H-22),ax=Math.min(Math.max(sx(0),30),W-8);
+  for(let v=Math.ceil(XR[0]/st)*st;v<=XR[1]+1e-9;v+=st){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);if(Math.abs(v)>st/2)el('text',{x:sx(v),y:ay+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=fmtTick(v,st);}
+  for(let v=Math.ceil(YR[0]/st)*st;v<=YR[1]+1e-9;v+=st){el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);if(Math.abs(v)>st/2)el('text',{x:ax-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=fmtTick(v,st);}
+  if(sy(0)>=0&&sy(0)<=H)el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);
+  if(sx(0)>=0&&sx(0)<=W)el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);}
 
 let c=[-1,-0.5],drag=false;const found=new Set();
 function longLine(k){ // c·y = k
-  const n=Math.hypot(c[0],c[1]);const p0=[c[0]*k/(n*n),c[1]*k/(n*n)],d=[-c[1]/n,c[0]/n];return [[p0[0]-20*d[0],p0[1]-20*d[1]],[p0[0]+20*d[0],p0[1]+20*d[1]]];}
+  const n=Math.hypot(c[0],c[1]);const p0=[c[0]*k/(n*n),c[1]*k/(n*n)],d=[-c[1]/n,c[0]/n];const L=4*(Math.abs(XR[1])+Math.abs(XR[0])+Math.abs(YR[1])+Math.abs(YR[0]))+20;return [[p0[0]-L*d[0],p0[1]-L*d[1]],[p0[0]+L*d[0],p0[1]+L*d[1]]];}
 function render(){
-  [gLev,gOpt,gVec].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+  drawGrid();drawPoly();[gLev,gOpt,gVec].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
   const n=Math.hypot(c[0],c[1]);let st,read;
   if(n<1e-9){
     el('path',{d:CORNERS.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'none',stroke:'var(--obj)','stroke-width':4},gOpt);
@@ -138,14 +156,31 @@ function render(){
 }
 const pt=svg.createSVGPoint();
 function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
-function snapC(q){q=[Math.min(Math.max(q[0],-2.1),4.9),Math.min(Math.max(q[1],-2.1),4.9)];if(!$('snap').checked)return q;const g=[Math.round(q[0]*2)/2,Math.round(q[1]*2)/2];return Math.hypot(g[0]-q[0],g[1]-q[1])<0.12?g:q;}
+function snapC(q){q=[Math.min(Math.max(q[0],XR[0]),XR[1]),Math.min(Math.max(q[1],YR[0]),YR[1])];if(!$('snap').checked)return q;const g=[Math.round(q[0]*2)/2,Math.round(q[1]*2)/2];return Math.hypot(g[0]-q[0],g[1]-q[1])<0.12?g:q;}
 svg.addEventListener('pointermove',ev=>{if(!drag)return;const s=svgPt(ev);c=snapC([wx(s.x),wy(s.y)]);render();});
 svg.addEventListener('pointerup',()=>drag=false);svg.addEventListener('pointercancel',()=>drag=false);
 function key(e){const st=e.shiftKey?0.05:0.5;const d={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,st],ArrowDown:[0,-st]}[e.key];if(!d)return;e.preventDefault();
-  c=[+(c[0]+d[0]).toFixed(3),+(c[1]+d[1]).toFixed(3)];c=[Math.min(Math.max(c[0],-2.1),4.9),Math.min(Math.max(c[1],-2.1),4.9)];render();const g=svg.querySelector('.grab');if(g)g.focus();}
+  c=[+(c[0]+d[0]).toFixed(3),+(c[1]+d[1]).toFixed(3)];render();const g=svg.querySelector('.grab');if(g)g.focus();}
 $('levels').onchange=render;
 $('tie').onclick=()=>{c=[-1,-1];render();};
 $('reset').onclick=()=>{c=[-1,-0.5];found.clear();render();};
+/* ---- zoom and pan ---- */
+let panS=null,tg=null;
+svg.addEventListener('pointerdown',ev=>{if(drag||ev.pointerType==='touch')return;const q=svgPt(ev);panS={px:q.x,py:q.y,XR:XR.slice(),YR:YR.slice()};svg.setPointerCapture(ev.pointerId);});
+svg.addEventListener('pointermove',ev=>{if(!panS||drag)return;const q=svgPt(ev);const dx=(q.x-panS.px)/W*(panS.XR[1]-panS.XR[0]),dy=(q.y-panS.py)/H*(panS.YR[1]-panS.YR[0]);
+  if(Math.hypot(q.x-panS.px,q.y-panS.py)<3)return;svg.style.cursor='grabbing';XR=[panS.XR[0]-dx,panS.XR[1]-dx];YR=[panS.YR[0]+dy,panS.YR[1]+dy];render();});
+const endPan=()=>{panS=null;svg.style.cursor='';};svg.addEventListener('pointerup',endPan);svg.addEventListener('pointercancel',endPan);
+function zoom(k,cx,cy){const w=(XR[1]-XR[0])*k;if(w<0.8||w>80)return;if(cx===undefined){cx=(XR[0]+XR[1])/2;cy=(YR[0]+YR[1])/2;}
+  XR=[cx-(cx-XR[0])*k,cx+(XR[1]-cx)*k];YR=[cy-(cy-YR[0])*k,cy+(YR[1]-cy)*k];render();}
+const MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent),hintEl=$('hint');
+function hint(msg){hintEl.textContent=msg;hintEl.classList.add('on');clearTimeout(hintEl._t);hintEl._t=setTimeout(()=>hintEl.classList.remove('on'),1100);}
+svg.addEventListener('wheel',ev=>{if(!(ev.ctrlKey||ev.metaKey)){hint('Hold '+(MAC?'⌘':'Ctrl')+' and scroll to zoom');return;}ev.preventDefault();const q=svgPt(ev);zoom(Math.exp(Math.max(-0.5,Math.min(0.5,ev.deltaY*0.01))),wx(q.x),wy(q.y));},{passive:false});
+function tmid(e){const a=e.touches[0],b=e.touches[1];pt.x=(a.clientX+b.clientX)/2;pt.y=(a.clientY+b.clientY)/2;const q=pt.matrixTransform(svg.getScreenCTM().inverse());return {x:q.x,y:q.y,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};}
+svg.addEventListener('touchstart',e=>{if(e.touches.length===2){e.preventDefault();drag=false;const m=tmid(e);tg={m,XR:XR.slice(),YR:YR.slice(),wx:wx(m.x),wy:wy(m.y)};}},{passive:false});
+svg.addEventListener('touchmove',e=>{if(!tg||e.touches.length!==2)return;e.preventDefault();const m=tmid(e);const w0=tg.XR[1]-tg.XR[0],h0=tg.YR[1]-tg.YR[0];const k=Math.max(0.8/w0,Math.min(80/w0,tg.m.d/m.d));
+  const w=w0*k,h=h0*k,x0=tg.wx-(m.x/W)*w,y0=tg.wy-((H-m.y)/H)*h;XR=[x0,x0+w];YR=[y0,y0+h];render();},{passive:false});
+svg.addEventListener('touchend',e=>{if(e.touches.length<2)tg=null;});
+$('zin').onclick=()=>zoom(1/1.5);$('zout').onclick=()=>zoom(1.5);$('zreset').onclick=()=>{XR=V0.slice();YR=V0.slice();render();};
 render();
 })();
 </script>
