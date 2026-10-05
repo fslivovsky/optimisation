@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vertex tester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --feasible:#2F6F9F; --feasible-fill:rgba(47,111,159,.22); --good:#2E7D4F; --obj:#C9781E; --bad:#A8325E;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.24); --good:#5CC98A; --obj:#E3A63A; --bad:#E27AA6;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.24); --good:#5CC98A; --obj:#E3A63A; --bad:#E27AA6;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.45vw,22px);line-height:1.4}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:62em}
+main{padding:0 clamp(18px,4vw,60px) 24px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:clamp(14px,2.5vw,40px)}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:pan-x pan-y;user-select:none;align-self:start}
+svg.board .grab{touch-action:none}
+.panel{display:flex;flex-direction:column;gap:.8em;font-size:.92em;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .8em;align-items:center}
+button.btn{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.22em .75em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible,.grab:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+.read{line-height:1.6;font-variant-numeric:tabular-nums}
+.status{min-height:4.2em}
+.good{color:var(--good)} .warn{color:var(--obj)} .bad{color:var(--bad)}
+.found{display:flex;flex-wrap:wrap;gap:.4em}
+.found span{border:1px solid var(--rule);border-radius:6px;padding:.1em .55em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.found span.on{border-color:var(--good);color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Vertex tester</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">A point <i>x</i> ∈ <i>P</i> is a <b>vertex</b> if some vector <i>c</i> makes <i>x</i> the <b>unique</b> minimiser of <i>c</i><sup>T</sup><i>y</i> over <i>P</i>. Drag the tip of <i>c</i>: the minimisers of <i>c</i><sup>T</sup><i>y</i> are the points of <i>P</i> furthest in the direction −<i>c</i>. Can you find a <i>c</i> for every corner of the running example?</p>
+<main>
+  <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with a draggable objective vector c from the origin; the minimisers of c transpose y are highlighted"></svg>
+  <div class="panel">
+    <div class="read" id="read"></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div>
+      <div class="note" style="margin-bottom:.3em">Corners certified as vertices so far:</div>
+      <div class="found" id="found"></div>
+    </div>
+    <div class="controls">
+      <label class="chk"><input type="checkbox" id="snap" checked> <span>Snap <i>c</i> to the grid</span></label>
+      <label class="chk"><input type="checkbox" id="levels" checked> Show level lines</label>
+    </div>
+    <div class="controls">
+      <button class="btn" id="tie">Show a tie</button>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+    <p class="note">Drag the orange arrow tip, or select it and use the arrow keys (hold Shift for small steps). With snapping on, the tip jumps to multiples of ½ when it gets close, which makes ties between two corners easy to hit. The faint lines are level lines <i>c</i><sup>T</sup><i>y</i> = constant; the bold one is the lowest level that still touches <i>P</i>.</p>
+  </div>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+const CORNERS=[[0,0],[3,0],[3,1],[1,3],[0,3]];
+const f2=v=>(Math.abs(v)<5e-4?0:v).toFixed(2).replace('-','−');
+const fp=q=>'('+f2(q[0])+', '+f2(q[1])+')';
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,R=[-2.2,5];
+const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>H-(y-R[0])/(R[1]-R[0])*H;
+const wx=px=>R[0]+px/W*(R[1]-R[0]), wy=py=>R[0]+(H-py)/H*(R[1]-R[0]);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const gGrid=el('g',{},svg),gLev=el('g',{},svg),gPoly=el('g',{},svg),gOpt=el('g',{},svg),gVec=el('g',{},svg);
+for(let v=-2;v<=5;v++){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);
+  if(v){el('text',{x:sx(v),y:sy(0)+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;el('text',{x:sx(0)-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;}}
+el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
+const defs=el('defs',{},svg);const mk=el('marker',{id:'ah',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},defs);el('path',{d:'M0 0L10 5L0 10z',fill:'var(--obj)'},mk);
+el('path',{d:CORNERS.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.6},gPoly);
+CORNERS.forEach(q=>el('circle',{cx:sx(q[0]),cy:sy(q[1]),r:4,fill:'var(--feasible)'},gPoly));
+
+let c=[-1,-0.5],drag=false;const found=new Set();
+function longLine(k){ // c·y = k
+  const n=Math.hypot(c[0],c[1]);const p0=[c[0]*k/(n*n),c[1]*k/(n*n)],d=[-c[1]/n,c[0]/n];return [[p0[0]-20*d[0],p0[1]-20*d[1]],[p0[0]+20*d[0],p0[1]+20*d[1]]];}
+function render(){
+  [gLev,gOpt,gVec].forEach(g=>{while(g.firstChild)g.removeChild(g.firstChild);});
+  const n=Math.hypot(c[0],c[1]);let st,read;
+  if(n<1e-9){
+    el('path',{d:CORNERS.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'none',stroke:'var(--obj)','stroke-width':4},gOpt);
+    st='<span class="warn"><i>c</i> = 0:</span> every point of <i>P</i> minimises 0<sup>T</sup><i>y</i> = 0, so no point is the unique minimiser.';
+    read='<i>c</i> = (0, 0)';
+  } else {
+    const vals=CORNERS.map(q=>c[0]*q[0]+c[1]*q[1]);const mn=Math.min(...vals);const idx=vals.map((v,i)=>[v,i]).filter(([v])=>v<mn+1e-9).map(([,i])=>i);
+    if($('levels').checked){const mx=Math.max(...vals),step=Math.max((mx-mn)/5,0.25*n);for(let k=1;k<=12;k++){const [A,B]=longLine(mn+k*step);el('line',{x1:sx(A[0]),y1:sy(A[1]),x2:sx(B[0]),y2:sy(B[1]),stroke:'var(--obj)','stroke-width':1,opacity:.22},gLev);}}
+    const [A,B]=longLine(mn);el('line',{x1:sx(A[0]),y1:sy(A[1]),x2:sx(B[0]),y2:sy(B[1]),stroke:'var(--obj)','stroke-width':2.2,'stroke-dasharray':'8 5'},gLev);
+    read='<i>c</i> = ('+f2(c[0])+', '+f2(c[1])+')<br>minimum of <i>c</i><sup>T</sup><i>y</i> over <i>P</i>: <b>'+f2(mn)+'</b>';
+    if(idx.length===1){const v=CORNERS[idx[0]];found.add(idx[0]);
+      el('circle',{cx:sx(v[0]),cy:sy(v[1]),r:11,fill:'var(--good)',stroke:'var(--panel)','stroke-width':2},gOpt);
+      el('text',{x:sx(v[0])+14,y:sy(v[1])-12,'font-size':16,fill:'var(--good)','font-weight':500},gOpt).textContent=fp(v)+' is a vertex';
+      st='<span class="good">'+fp(v)+' is the unique minimiser,</span> so it is a <b>vertex</b>: every other point of <i>P</i> has a larger value of <i>c</i><sup>T</sup><i>y</i>.';}
+    else{const a=CORNERS[idx[0]],b=CORNERS[idx[1]];
+      el('line',{x1:sx(a[0]),y1:sy(a[1]),x2:sx(b[0]),y2:sy(b[1]),stroke:'var(--obj)','stroke-width':7,'stroke-linecap':'round'},gOpt);
+      st='<span class="warn">A tie:</span> every point of the edge from '+fp(a)+' to '+fp(b)+' minimises <i>c</i><sup>T</sup><i>y</i>, so for this <i>c</i> no point is the <i>unique</i> minimiser. Rotate <i>c</i> slightly either way and one endpoint wins. A point in the middle of the edge never wins: it is not a vertex.';}
+  }
+  // vector c from origin
+  const T=[sx(c[0]),sy(c[1])],O=[sx(0),sy(0)];
+  if(n>1e-9)el('line',{x1:O[0],y1:O[1],x2:T[0],y2:T[1],stroke:'var(--obj)','stroke-width':3,'marker-end':'url(#ah)'},gVec);
+  el('circle',{cx:O[0],cy:O[1],r:3.5,fill:'var(--obj)'},gVec);
+  el('text',{x:T[0]+10,y:T[1]+(c[1]>0?-8:20),'font-size':18,'font-style':'italic',fill:'var(--obj)','font-weight':500},gVec).textContent='c';
+  const h=el('circle',{cx:T[0],cy:T[1],r:20,fill:'transparent',class:'grab',style:'cursor:grab',tabindex:0,role:'slider','aria-label':'Tip of c at '+fp(c)+'. Use arrow keys to move.'},gVec);
+  h.addEventListener('pointerdown',ev=>{drag=true;svg.setPointerCapture(ev.pointerId);ev.stopPropagation();});h.addEventListener('keydown',key);
+  $('read').innerHTML=read;$('status').innerHTML=st;
+  $('found').innerHTML=CORNERS.map((q,i)=>'<span class="'+(found.has(i)?'on':'')+'">'+fp(q).replace(/\.00/g,'')+'</span>').join('')+(found.size===CORNERS.length?' <b class="good" style="align-self:center">All five corners are vertices.</b>':'');
+}
+const pt=svg.createSVGPoint();
+function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+function snapC(q){q=[Math.min(Math.max(q[0],-2.1),4.9),Math.min(Math.max(q[1],-2.1),4.9)];if(!$('snap').checked)return q;const g=[Math.round(q[0]*2)/2,Math.round(q[1]*2)/2];return Math.hypot(g[0]-q[0],g[1]-q[1])<0.12?g:q;}
+svg.addEventListener('pointermove',ev=>{if(!drag)return;const s=svgPt(ev);c=snapC([wx(s.x),wy(s.y)]);render();});
+svg.addEventListener('pointerup',()=>drag=false);svg.addEventListener('pointercancel',()=>drag=false);
+function key(e){const st=e.shiftKey?0.05:0.5;const d={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,st],ArrowDown:[0,-st]}[e.key];if(!d)return;e.preventDefault();
+  c=[+(c[0]+d[0]).toFixed(3),+(c[1]+d[1]).toFixed(3)];c=[Math.min(Math.max(c[0],-2.1),4.9),Math.min(Math.max(c[1],-2.1),4.9)];render();const g=svg.querySelector('.grab');if(g)g.focus();}
+$('levels').onchange=render;
+$('tie').onclick=()=>{c=[-1,-1];render();};
+$('reset').onclick=()=>{c=[-1,-0.5];found.clear();render();};
+render();
+})();
+</script>
+</body>
+</html>

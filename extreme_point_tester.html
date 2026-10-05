@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Extreme point tester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --feasible:#2F6F9F; --feasible-fill:rgba(47,111,159,.22); --good:#2E7D4F; --seg:#C9781E; --bad:#A8325E;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.24); --good:#5CC98A; --seg:#E3A63A; --bad:#E27AA6;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --feasible:#6FB0E0; --feasible-fill:rgba(111,176,224,.24); --good:#5CC98A; --seg:#E3A63A; --bad:#E27AA6;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.45vw,22px);line-height:1.4}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:62em}
+main{padding:0 clamp(18px,4vw,60px) 24px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:clamp(14px,2.5vw,40px)}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:pan-x pan-y;user-select:none;align-self:start}
+svg.board .grab{touch-action:none}
+.panel{display:flex;flex-direction:column;gap:.8em;font-size:.92em;min-width:0}
+.row{display:grid;grid-template-columns:1.6em 1fr 3.2em;align-items:center;gap:.6em}
+.row label{font-style:italic;color:var(--ink-soft)}
+.row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--seg)}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .8em;align-items:center}
+button.btn{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.22em .75em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible,.grab:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+.read{line-height:1.6;font-variant-numeric:tabular-nums}
+.status{min-height:4.2em}
+.good{color:var(--good)} .bad{color:var(--bad)} .neutral{color:var(--ink-soft)}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Extreme point tester</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">A point <i>z</i> ∈ <i>P</i> is <b>not</b> an extreme point if you can write <i>z</i> = θ<i>x</i> + (1 − θ)<i>y</i> with <i>x</i>, <i>y</i> ∈ <i>P</i>, both different from <i>z</i>, and θ ∈ (0, 1). Choose a point <i>z</i>, then look for such <i>x</i>, <i>y</i> and θ. Here <i>P</i> is the running example: <i>x</i><sub>1</sub> + <i>x</i><sub>2</sub> ≤ 4, <i>x</i><sub>1</sub> ≤ 3, <i>x</i><sub>2</sub> ≤ 3, <i>x</i> ≥ 0.</p>
+<main>
+  <svg id="b" class="board" viewBox="0 0 600 600" role="img" aria-label="The polyhedron with draggable points p, y and z and the segment between y and z"></svg>
+  <div class="panel">
+    <div class="row"><label for="th">θ</label><input type="range" id="th" min="0.05" max="0.95" step="0.01" value="0.5"><output id="tho"></output></div>
+    <label class="chk"><input type="checkbox" id="follow" checked> <span><i>y</i> follows <i>x</i>, so that θ<i>x</i> + (1 − θ)<i>y</i> = <i>z</i> always</span></label>
+    <div class="controls">
+      <button class="btn" id="witness">Find <i>x</i> and <i>y</i> for me</button>
+      <button class="btn" id="corners">Put <i>z</i> on a corner</button>
+      <button class="btn" id="edge">Put <i>z</i> on an edge</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="snap" checked> <span>Snap points to edges and corners</span></label>
+    <div class="read" id="read"></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <p class="note">Drag <i>z</i> (black), <i>x</i> and <i>y</i> (orange), or select a point and use the arrow keys. With snapping on, points jump onto an edge or corner of <i>P</i> when they get very close. With "<i>y</i> follows <i>x</i>" switched on, moving <i>x</i> or θ automatically places <i>y</i> on the other side of <i>z</i>, so the question becomes: can you keep both <i>x</i> and <i>y</i> inside <i>P</i>? At a corner you never can.</p>
+  </div>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+const CONS=[{a:[1,1],b:4},{a:[1,0],b:3},{a:[0,1],b:3},{a:[-1,0],b:0},{a:[0,-1],b:0}];
+const CORNERS=[[0,0],[3,0],[3,1],[1,3],[0,3]];
+const TOL=1e-7;
+const inP=q=>CONS.every(c=>c.a[0]*q[0]+c.a[1]*q[1]<=c.b+TOL);
+const dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+const lin=(t,u,v)=>[t*u[0]+(1-t)*v[0],t*u[1]+(1-t)*v[1]];
+const f2=v=>(Math.abs(v)<5e-4?0:v).toFixed(2).replace('-','−');
+const fp=q=>'('+f2(q[0])+', '+f2(q[1])+')';
+
+/* board */
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=600,H=600,R=[-1,5];
+const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>H-(y-R[0])/(R[1]-R[0])*H;
+const wx=px=>R[0]+px/W*(R[1]-R[0]), wy=py=>R[0]+(H-py)/H*(R[1]-R[0]);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const gGrid=el('g',{},svg),gPoly=el('g',{},svg),gSeg=el('g',{},svg),gPts=el('g',{},svg);
+for(let v=0;v<=5;v++){el('line',{x1:sx(v),y1:0,x2:sx(v),y2:H,stroke:'var(--grid)'},gGrid);el('line',{x1:0,y1:sy(v),x2:W,y2:sy(v),stroke:'var(--grid)'},gGrid);
+  if(v){el('text',{x:sx(v),y:sy(0)+18,'text-anchor':'middle','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;el('text',{x:sx(0)-8,y:sy(v)+4,'text-anchor':'end','font-size':13,fill:'var(--muted)'},gGrid).textContent=v;}}
+el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)','stroke-width':1.3},gGrid);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)','stroke-width':1.3},gGrid);
+el('path',{d:CORNERS.map((p,i)=>(i?'L':'M')+sx(p[0])+' '+sy(p[1])).join(' ')+'Z',fill:'var(--feasible-fill)',stroke:'var(--feasible)','stroke-width':1.6},gPoly);
+el('text',{x:sx(1.1),y:sy(1.4),'font-size':22,'font-style':'italic',fill:'var(--feasible)',opacity:.7},gPoly).textContent='P';
+
+/* state */
+let p=[2,2],y=[1.5,2.5],z=[2.5,1.5],TH=0.5,drag=null;
+function snapP(q){if(!$('snap').checked)return q;let best=null,bd=0.15;for(const c of CORNERS){const d=dist(c,q);if(d<bd){bd=d;best=c.slice();}}if(best)return best;
+  for(const c of CONS){const n=Math.hypot(c.a[0],c.a[1]);const dd=(c.a[0]*q[0]+c.a[1]*q[1]-c.b)/n;if(Math.abs(dd)<0.12)return [q[0]-dd*c.a[0]/n,q[1]-dd*c.a[1]/n];}return q;}
+function snapEdge(q){if(!$('snap').checked)return q;let best=null,bd=0.15;
+  for(const c of CORNERS){const d=dist(c,q);if(d<bd){bd=d;best=c.slice();}}if(best)return best;
+  bd=0.1;for(let i=0;i<CORNERS.length;i++){const a=CORNERS[i],b=CORNERS[(i+1)%CORNERS.length];const ab=[b[0]-a[0],b[1]-a[1]];
+    let t=((q[0]-a[0])*ab[0]+(q[1]-a[1])*ab[1])/(ab[0]*ab[0]+ab[1]*ab[1]);t=Math.min(1,Math.max(0,t));const pr=[a[0]+t*ab[0],a[1]+t*ab[1]];const d=dist(pr,q);
+    if(d<bd){bd=d;best=pr;}}
+  return best||q;}
+function follow(){if($('follow').checked){z=[(p[0]-TH*y[0])/(1-TH),(p[1]-TH*y[1])/(1-TH)];}}
+
+function render(){
+  while(gSeg.firstChild)gSeg.removeChild(gSeg.firstChild);while(gPts.firstChild)gPts.removeChild(gPts.firstChild);
+  const zt=lin(TH,y,z);const yIn=inP(y),zIn=inP(z),pIn=inP(p);
+  // segment y-z, coloured by feasibility of its ends
+  el('line',{x1:sx(y[0]),y1:sy(y[1]),x2:sx(z[0]),y2:sy(z[1]),stroke:yIn&&zIn?'var(--seg)':'var(--bad)','stroke-width':3,'stroke-dasharray':yIn&&zIn?'':'7 5'},gSeg);
+  // combination point
+  el('circle',{cx:sx(zt[0]),cy:sy(zt[1]),r:6,fill:'var(--panel)',stroke:'var(--seg)','stroke-width':2},gSeg);
+  if(dist(zt,p)>1e-6)el('text',{x:sx(zt[0])+10,y:sy(zt[1])+20,'font-size':13,fill:'var(--seg)'},gSeg).textContent='θx + (1 − θ)y';
+  // marker when z lies outside the visible area
+  const inView=q=>q[0]>=R[0]&&q[0]<=R[1]&&q[1]>=R[0]&&q[1]<=R[1];
+  if(!inView(z)){let t=1;const d=[z[0]-p[0],z[1]-p[1]];
+    for(const [k,lim] of [[0,R[0]],[0,R[1]],[1,R[0]],[1,R[1]]]){if(Math.abs(d[k])>1e-12){const tt=(lim-p[k])/d[k];if(tt>0&&tt<t)t=tt;}}
+    const e=[p[0]+t*d[0]*0.97,p[1]+t*d[1]*0.97],ang=Math.atan2(-(d[1]),d[0]);const X=sx(e[0]),Y=sy(e[1]);
+    const tri=[[12,0],[-7,-7],[-7,7]].map(([u,v])=>[X+u*Math.cos(ang)-v*Math.sin(ang),Y+u*Math.sin(ang)+v*Math.cos(ang)]);
+    el('path',{d:'M'+tri.map(q=>q.join(' ')).join(' L')+' Z',fill:'var(--bad)'},gSeg);
+    el('text',{x:Math.min(Math.max(X-40,8),W-150),y:Math.min(Math.max(Y+26,20),H-8),'font-size':14,fill:'var(--bad)','font-style':'italic'},gSeg).textContent='y = '+fp(z)+' →';}
+  const handle=(q,id,col,lab,r)=>{el('circle',{cx:sx(q[0]),cy:sy(q[1]),r,fill:inP(q)?col:'var(--panel)',stroke:inP(q)?col:'var(--bad)','stroke-width':2.5},gPts);
+    el('text',{x:sx(q[0])+11,y:sy(q[1])-10,'font-size':17,'font-style':'italic',fill:inP(q)?'var(--ink)':'var(--bad)'},gPts).textContent=lab;
+    const h=el('circle',{cx:sx(q[0]),cy:sy(q[1]),r:20,fill:'transparent',class:'grab',style:'cursor:grab',tabindex:0,role:'slider','data-id':id,'aria-label':'Point '+lab+' at '+fp(q)+'. Use arrow keys to move.'},gPts);
+    h.addEventListener('pointerdown',ev=>{drag=id;svg.setPointerCapture(ev.pointerId);ev.stopPropagation();});
+    h.addEventListener('keydown',ev=>key(ev,id));};
+  handle(y,'y','var(--seg)','x',7);
+  if(!$('follow').checked)handle(z,'z','var(--seg)','y',7);
+  else{el('circle',{cx:sx(z[0]),cy:sy(z[1]),r:7,fill:zIn?'var(--seg)':'var(--panel)',stroke:zIn?'var(--seg)':'var(--bad)','stroke-width':2.5},gPts);
+    el('text',{x:sx(z[0])+11,y:sy(z[1])-10,'font-size':17,'font-style':'italic',fill:zIn?'var(--ink)':'var(--bad)'},gPts).textContent='y';}
+  handle(p,'p','var(--ink)','z',8);
+  $('tho').textContent=TH.toFixed(2);
+  $('read').innerHTML='<i>z</i> = '+fp(p)+'<br><i>x</i> = '+fp(y)+(yIn?'':' <span class="bad">(outside <i>P</i>)</span>')+'<br><i>y</i> = '+fp(z)+(zIn?'':' <span class="bad">(outside <i>P</i>)</span>')+'<br>θ<i>x</i> + (1 − θ)<i>y</i> = '+fp(zt);
+  // verdict
+  const corner=CORNERS.some(c=>dist(c,p)<1e-9);let st;
+  if(!pIn)st='<span class="bad"><i>z</i> is outside <i>P</i>.</span> Extreme points are points of <i>P</i>; move <i>z</i> back in.';
+  else if(dist(zt,p)>1e-6)st='<span class="neutral">θ<i>x</i> + (1 − θ)<i>y</i> is not <i>z</i> yet.</span> Move <i>x</i>, <i>y</i> or θ until the orange ring sits on <i>z</i>, or switch on "<i>y</i> follows <i>x</i>".';
+  else if(dist(y,p)<1e-6||dist(z,p)<1e-6)st='<span class="neutral"><i>x</i> and <i>y</i> must both differ from <i>z</i>.</span> Writing <i>z</i> = θ<i>z</i> + (1 − θ)<i>z</i> proves nothing.';
+  else if(!yIn||!zIn)st='<span class="bad">'+(!yIn&&!zIn?'<i>x</i> and <i>y</i> are':(!yIn?'<i>x</i> is':'<i>y</i> is'))+' outside <i>P</i>,</span> so this is not a valid witness.'+(corner?' <i>z</i> is a corner: whichever direction you move <i>x</i>, the point <i>y</i> on the other side leaves <i>P</i>. That is what it means to be an extreme point.':' Try a different direction for <i>x</i>.');
+  else st='<span class="good"><i>z</i> is not an extreme point.</span> It is a convex combination of two other points of <i>P</i>: <i>z</i> = '+TH.toFixed(2)+'<i>x</i> + '+(1-TH).toFixed(2)+'<i>y</i>.';
+  $('status').innerHTML=st;
+}
+
+/* interaction */
+const pt=svg.createSVGPoint();
+function svgPt(ev){pt.x=ev.clientX;pt.y=ev.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+const clampV=q=>[Math.min(Math.max(q[0],-0.9),4.9),Math.min(Math.max(q[1],-0.9),4.9)];
+function moveTo(id,q){if(id==='p'){p=snapP(clampV(q));}else if(id==='y'){y=snapEdge(clampV(q));}else{z=snapEdge(clampV(q));}follow();render();}
+svg.addEventListener('pointermove',ev=>{if(!drag)return;const s=svgPt(ev);moveTo(drag,[wx(s.x),wy(s.y)]);});
+svg.addEventListener('pointerup',()=>drag=null);svg.addEventListener('pointercancel',()=>drag=null);
+function key(e,id){const st=e.shiftKey?0.01:0.1;const d={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,st],ArrowDown:[0,-st]}[e.key];if(!d)return;e.preventDefault();
+  const q=id==='p'?p:id==='y'?y:z;moveTo(id,[+(q[0]+d[0]).toFixed(4),+(q[1]+d[1]).toFixed(4)]);const h=svg.querySelector('.grab[data-id="'+id+'"]');if(h)h.focus();}
+$('th').addEventListener('input',e=>{TH=+e.target.value;follow();render();});
+$('follow').onchange=()=>{follow();render();};
+$('snap').onchange=()=>{p=snapP(p);follow();render();};
+$('corners').onclick=()=>{const c=CORNERS[(CORNERS.findIndex(q=>dist(q,p)<1e-9)+1)%CORNERS.length];p=c.slice();y=[p[0]-0.5,p[1]+0.4];follow();render();};
+$('edge').onclick=()=>{p=[2,2];y=[1.5,2.5];follow();render();};
+$('witness').onclick=()=>{
+  // search directions d for the largest e with p ± e d in P
+  let best=null,be=1e-6;
+  for(let k=0;k<360;k++){const a=Math.PI*k/360,d=[Math.cos(a),Math.sin(a)];let e=Infinity;
+    for(const c of CONS){const slack=c.b-(c.a[0]*p[0]+c.a[1]*p[1]),ad=c.a[0]*d[0]+c.a[1]*d[1];
+      if(Math.abs(ad)<1e-12){continue;}const lim=(slack+TOL)/Math.abs(ad);e=Math.min(e,lim);}
+    if(e>be){be=e;best=d;}}
+  if(!best){render();$('status').innerHTML='<span class="good">No witness exists: <i>z</i> is an extreme point.</span> Every direction you could move <i>x</i> in sends <i>y</i> = 2<i>z</i> − <i>x</i> out of <i>P</i>, because two linearly independent constraints are active at <i>z</i>.';return;}
+  const e=Math.min(be,1.2)*0.8;TH=0.5;$('th').value=0.5;y=[p[0]+e*best[0],p[1]+e*best[1]];follow();if(!$('follow').checked)z=[p[0]-e*best[0],p[1]-e*best[1]];render();};
+follow();render();
+})();
+</script>
+</body>
+</html>
