@@ -52,13 +52,13 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .dots button[aria-current="step"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .steptitle{font-size:1.15em;font-weight:500;margin:.2em 0 .4em}
 .expl{color:var(--ink-soft);margin:.3em 0 .9em;max-width:46em}
-.eqrow{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.6em;margin:.6em 0;overflow-x:auto}
-.op{font-size:1.4em;color:var(--ink-soft);padding:0 .1em;align-self:center;margin-top:-.6em}
-.lbl{font-size:.85em;color:var(--muted);text-align:center;margin-top:.2em}
-.blk{display:flex;flex-direction:column;align-items:center}
+.eqrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 0.6em;margin:.6em 0 2.4em;padding-bottom:.2em}
+.op{font-size:1.4em;color:var(--ink-soft);padding:calc(1.6em / 1.4) .1em 0}
+.lbl{font-size:.85em;color:var(--muted);text-align:center;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:.25em;width:max-content;max-width:14em}
+.blk{display:flex;flex-direction:column;align-items:center;position:relative}
 table.m{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;position:relative}
 table.m td,table.m th{padding:.15em 0;text-align:center;width:2.5em;min-width:2.5em}
-.hdr{display:flex;padding:0 calc(.45em + 2px);margin-bottom:.15em}
+.hdr{display:flex;align-items:flex-end;height:1.6em;padding:0 calc(.45em + 2px)}
 .hdr span{width:3.125em;text-align:center;font-size:.8em;color:var(--muted)}
 .hdr span.sep,.hdr span.sepL{border-left:2px dashed transparent}
 table.m th{font-weight:400;font-size:.8em;color:var(--muted)}
