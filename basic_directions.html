@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deriving basic directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --basic:#2F6F9F; --basic-bg:rgba(47,111,159,.13); --non:#8A929E; --non-bg:rgba(138,146,158,.12);
+  --enter:#C9781E; --enter-bg:rgba(201,120,30,.18); --bad:#A8325E; --good:#2E7D4F;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --card:#ECEFEB; --focus:#2F6F9F; --feasible-fill:rgba(47,111,159,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --basic:#6FB0E0; --basic-bg:rgba(111,176,224,.16); --non:#7D8792; --non-bg:rgba(125,135,146,.14);
+    --enter:#E3A63A; --enter-bg:rgba(227,166,58,.2); --bad:#E27AA6; --good:#5CC98A;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0; --feasible-fill:rgba(111,176,224,.2);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --basic:#6FB0E0; --basic-bg:rgba(111,176,224,.16); --non:#7D8792; --non-bg:rgba(125,135,146,.14);
+  --enter:#E3A63A; --enter-bg:rgba(227,166,58,.2); --bad:#E27AA6; --good:#5CC98A;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0; --feasible-fill:rgba(111,176,224,.2);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .6em;max-width:64em}
+main{padding:0 clamp(18px,4vw,60px) 32px;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:clamp(14px,2.5vw,36px);align-items:start}
+.pickers{display:flex;flex-wrap:wrap;gap:.6em 1.4em;align-items:center;margin-bottom:.8em}
+.pickers label{color:var(--ink-soft)}
+select,button.btn{font:inherit;font-size:.92em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.2em .6em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button.btn[aria-pressed="true"]{border-color:var(--enter);box-shadow:inset 0 0 0 1px var(--enter)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.stage{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:1em 1.2em;min-height:24em}
+.stepnav{display:flex;align-items:center;gap:.6em;margin-bottom:.7em;flex-wrap:wrap}
+.dots{display:flex;gap:.35em}
+.dots button{width:1.9em;height:1.9em;border-radius:50%;border:1px solid var(--rule);background:var(--panel);color:var(--ink-soft);font:inherit;font-size:.8em;cursor:pointer}
+.dots button[aria-current="step"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.steptitle{font-size:1.15em;font-weight:500;margin:.2em 0 .4em}
+.expl{color:var(--ink-soft);margin:.3em 0 .9em;max-width:46em}
+.eqrow{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.6em;margin:.6em 0;overflow-x:auto}
+.op{font-size:1.4em;color:var(--ink-soft);padding:0 .1em;align-self:center;margin-top:-.6em}
+.lbl{font-size:.85em;color:var(--muted);text-align:center;margin-top:.2em}
+.blk{display:flex;flex-direction:column;align-items:center}
+table.m{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;position:relative}
+table.m td,table.m th{padding:.15em 0;text-align:center;width:2.5em;min-width:2.5em}
+.hdr{display:flex;padding:0 calc(.45em + 2px);margin-bottom:.15em}
+.hdr span{width:3.125em;text-align:center;font-size:.8em;color:var(--muted)}
+.hdr span.sep,.hdr span.sepL{border-left:2px dashed transparent}
+table.m th{font-weight:400;font-size:.8em;color:var(--muted)}
+table.m tbody{border-left:2px solid var(--ink);border-right:2px solid var(--ink)}
+table.m tbody tr:first-child td:first-child{border-top-left-radius:0}
+.bk{display:inline-flex;align-items:stretch}
+.bk::before,.bk::after{content:"";width:.45em;border:2px solid var(--ink-soft)}
+.bk::before{border-right:0;border-radius:4px 0 0 4px}
+.bk::after{border-left:0;border-radius:0 4px 4px 0}
+.c-basic{background:var(--basic-bg)} .c-non{background:var(--non-bg)} .c-enter{background:var(--enter-bg);font-weight:600}
+.h-basic{color:var(--basic)!important} .h-non{color:var(--non)!important} .h-enter{color:var(--enter)!important;font-weight:600}
+.sep{border-left:2px dashed var(--rule)}
+.unk{color:var(--muted);font-style:italic}
+.formula{font-size:1.15em;margin:.5em 0}
+.keybox{border-left:3px solid var(--enter);padding:.3em .8em;margin:.8em 0;background:var(--card);border-radius:0 6px 6px 0}
+.side{display:flex;flex-direction:column;gap:.8em;font-size:.92em}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px}
+.row{display:grid;grid-template-columns:1.4em 1fr 3em;align-items:center;gap:.6em}
+.row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--enter)}
+.legend{display:flex;flex-wrap:wrap;gap:.3em 1em;font-size:.85em;color:var(--ink-soft)}
+.sw{display:inline-block;width:1em;height:1em;border-radius:3px;vertical-align:-.15em;margin-right:.3em}
+.note{color:var(--muted);font-size:.85em}
+.good{color:var(--good)} .bad{color:var(--bad)}
+i{font-style:italic}
+@media (max-width:980px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Deriving basic directions</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">At a basic feasible solution <i>x</i>, we want to increase one nonbasic variable <i>x<sub>j</sub></i> while keeping the equality constraints <i>Ax</i> = <i>b</i>. Step through the derivation of the direction <i>d</i> that does this, using the running example in standard form: <i>x</i><sub>1</sub> + <i>x</i><sub>2</sub> + <i>s</i><sub>1</sub> = 4, <i>x</i><sub>1</sub> + <i>s</i><sub>2</sub> = 3, <i>x</i><sub>2</sub> + <i>s</i><sub>3</sub> = 3.</p>
+<main>
+  <section>
+    <div class="pickers">
+      <label>Basic feasible solution <select id="bfs"></select></label>
+      <span><span style="color:var(--ink-soft)">Increase</span> <span id="enterBtns"></span></span>
+    </div>
+    <div class="stage">
+      <div class="stepnav">
+        <button class="btn" id="prev">← Previous</button>
+        <div class="dots" id="dots" role="tablist" aria-label="Steps"></div>
+        <button class="btn" id="next">Next →</button>
+      </div>
+      <div id="step" aria-live="polite"></div>
+    </div>
+  </section>
+  <aside class="side">
+    <svg id="b" class="board" viewBox="0 0 400 400" role="img" aria-label="The running example with the current basic feasible solution and the basic direction"></svg>
+    <div class="row"><label for="th"><i>θ</i></label><input type="range" id="th" min="0" max="4" step="0.01" value="0"><output id="tho">0.00</output></div>
+    <div id="pos" class="note" style="font-size:.9em;color:var(--ink-soft)"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--basic-bg);border:1px solid var(--basic)"></span>basic</span>
+      <span><span class="sw" style="background:var(--non-bg);border:1px solid var(--non)"></span>nonbasic</span>
+      <span><span class="sw" style="background:var(--enter-bg);border:1px solid var(--enter)"></span>the variable we increase</span>
+    </div>
+    <p class="note">Move θ to follow <i>x</i> + θ<i>d</i>. The point stays on all equality constraints for every θ, but leaves the polyhedron once a basic variable becomes negative. How far to move is the subject of the ratio test.</p>
+  </aside>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+/* ---- data: running example in standard form ---- */
+const NAMES=['x<sub>1</sub>','x<sub>2</sub>','s<sub>1</sub>','s<sub>2</sub>','s<sub>3</sub>'];
+const A=[[1,1,1,0,0],[1,0,0,1,0],[0,1,0,0,1]];const b=[4,3,3];const m=3,n=5;
+const BFS=[{label:'(0, 0)',basis:[2,3,4]},{label:'(3, 0)',basis:[0,2,4]},{label:'(3, 1)',basis:[0,1,4]},{label:'(1, 3)',basis:[0,1,3]},{label:'(0, 3)',basis:[1,2,3]}];
+const v=k=>'<i>'+NAMES[k].replace('<sub>','</i><sub>')+'';
+function dsub(k){const raw=NAMES[k].replace(/<\/?sub>/g,'');return '<i>d</i><sub>'+raw[0]+'<sub style="font-size:.8em">'+raw.slice(1)+'</sub></sub>';}
+
+/* ---- linear algebra on small matrices ---- */
+function inv(M){const k=M.length;const a=M.map((r,i)=>r.concat(Array.from({length:k},(_,j)=>i===j?1:0)));
+  for(let c=0;c<k;c++){let p=c;for(let r=c+1;r<k;r++)if(Math.abs(a[r][c])>Math.abs(a[p][c]))p=r;[a[c],a[p]]=[a[p],a[c]];const pv=a[c][c];
+    for(let j=0;j<2*k;j++)a[c][j]/=pv;for(let r=0;r<k;r++)if(r!==c){const f=a[r][c];for(let j=0;j<2*k;j++)a[r][j]-=f*a[c][j];}}
+  return a.map(r=>r.slice(k));}
+const mv=(M,x)=>M.map(r=>r.reduce((s,a,i)=>s+a*x[i],0));
+const fmt=x=>{const r=Math.round(x*1000)/1000;const s=Object.is(r,-0)?0:r;return (s<0?'−'+Math.abs(s):String(s));};
+
+/* ---- state ---- */
+let bi=0,enter=null,step=0,TH=0;
+const basis=()=>BFS[bi].basis;
+const nonbasic=()=>[0,1,2,3,4].filter(k=>!basis().includes(k));
+function xB(){const B=A.map(r=>basis().map(k=>r[k]));return mv(inv(B),b);}
+function xFull(){const x=[0,0,0,0,0];const xb=xB();basis().forEach((k,i)=>x[k]=xb[i]);return x;}
+function dB(){const B=A.map(r=>basis().map(k=>r[k]));const Aj=A.map(r=>r[enter]);return mv(inv(B),Aj).map(t=>-t);}
+function dFull(){const d=[0,0,0,0,0];d[enter]=1;const db=dB();basis().forEach((k,i)=>d[k]=db[i]);return d;}
+
+/* ---- matrix rendering ---- */
+function cls(k){return basis().includes(k)?'basic':(k===enter?'enter':'non');}
+function matA(cols,opts={}){ // cols: list of variable indices; shows A restricted to these columns, headers above the brackets
+  let hd='<div class="hdr">'+cols.map((k,i)=>'<span class="h-'+cls(k)+(opts.sepAt===i?' sep':'')+'">'+v(k)+'</span>').join('')+'</div>';
+  let h='<span class="bk"><table class="m"><tbody>';
+  for(let r=0;r<m;r++){h+='<tr>'+cols.map((k,i)=>{const hl=opts.highlight===k?'c-enter':(opts.tint?'c-'+cls(k):'');return '<td class="'+hl+(opts.sepAt===i?' sep':'')+'">'+fmt(A[r][k])+'</td>';}).join('')+'</tr>';}
+  return '<div style="display:flex;flex-direction:column;align-items:center">'+hd+h+'</tbody></table></span></div>';}
+function colVec(entries,classes,headers){ // entries: html strings
+  let h='<div class="hdr" aria-hidden="true"><span>&nbsp;</span></div><span class="bk"><table class="m"><tbody>';
+  entries.forEach((e,i)=>{h+='<tr><td class="'+(classes?classes[i]:'')+'">'+e+'</td></tr>';});return '<div style="display:flex;flex-direction:column;align-items:center">'+h+'</tbody></table></span></div>';}
+function numMat(M){let h='<div class="hdr" aria-hidden="true"><span>&nbsp;</span></div><span class="bk"><table class="m"><tbody>';M.forEach(r=>{h+='<tr>'+r.map(x=>'<td>'+fmt(x)+'</td>').join('')+'</tr>';});return '<div style="display:flex;flex-direction:column;align-items:center">'+h+'</tbody></table></span></div>';}
+const blk=(inner,label)=>'<div class="blk">'+inner+(label?'<div class="lbl">'+label+'</div>':'')+'</div>';
+const op=s=>'<span class="op">'+s+'</span>';
+
+/* ---- steps ---- */
+const STEPS=[
+ {title:'1. What the direction must satisfy',render(){
+   const all=[0,1,2,3,4];
+   return '<p class="expl">We move from <i>x</i> to <i>x</i> + θ<i>d</i> for some θ > 0. Since <i>Ax</i> = <i>b</i> already holds, the new point satisfies the equality constraints exactly when θ<i>Ad</i> = 0, that is, when</p>'+
+     '<div class="formula" style="text-align:center"><i>Ad</i> = 0.</div>'+
+     '<div class="eqrow">'+blk(matA(all),'<i>A</i>')+op('·')+blk(colVec(all.map(k=>'<span class="unk">'+dsub(k)+'</span>')),'<i>d</i>')+op('=')+blk(colVec(['0','0','0']),'0')+'</div>'+
+     '<p class="expl">Five unknowns, but only three equations. We are free to choose two of the entries: those belonging to the nonbasic variables.</p>';}},
+ {title:'2. Split into basic and nonbasic parts',render(){
+   const B=basis(),N=nonbasic();
+   return '<p class="expl">Reorder the columns so the basic variables come first. The matrix splits into the basis matrix <i>B</i> and the remaining columns <i>N</i>, and <i>d</i> splits the same way into <i>d</i><sub>B</sub> and <i>d</i><sub>N</sub>. Reordering columns and the entries of <i>d</i> together does not change the product.</p>'+
+     '<div class="eqrow">'+blk(matA(B.concat(N),{tint:true,sepAt:m}),'[ <i>B</i> | <i>N</i> ]')+op('·')+
+       blk(colVec(B.map(k=>'<span class="unk">'+dsub(k)+'</span>').concat(N.map(k=>'<span class="unk">'+dsub(k)+'</span>')),B.map(()=>'c-basic').concat(N.map(k=>k===enter?'c-enter':'c-non'))),'<i>d</i><sub>B</sub> over <i>d</i><sub>N</sub>')+op('=')+blk(colVec(['0','0','0']),'0')+'</div>'+
+     '<p class="expl">Multiplying a matrix by a vector adds up the columns, each weighted by its entry of the vector. So the product splits into one part for the basic columns and one for the nonbasic columns:</p>'+
+     '<div class="eqrow">'+blk(matA(B,{tint:true}),'<i>B</i>')+op('·')+blk(colVec(B.map(k=>'<span class="unk">'+dsub(k)+'</span>'),B.map(()=>'c-basic')),'<i>d</i><sub>B</sub>')+op('+')+
+       blk(matA(N,{tint:true}),'<i>N</i>')+op('·')+blk(colVec(N.map(k=>'<span class="unk">'+dsub(k)+'</span>'),N.map(k=>k===enter?'c-enter':'c-non')),'<i>d</i><sub>N</sub>')+op('=')+blk(colVec(['0','0','0']),'0')+'</div>'+
+     '<div class="formula" style="text-align:center">[ <i>B</i> | <i>N</i> ] · <i>d</i> = <i>B d</i><sub>B</sub> + <i>N d</i><sub>N</sub> = 0</div>';}},
+ {title:'3. Choose the nonbasic part: 0s and a single 1',render(){
+   const N=nonbasic();
+   return '<p class="expl">We increase only <i>x<sub>j</sub></i> = '+v(enter)+' and keep every other nonbasic variable at 0. So <i>d</i><sub>N</sub> has a 1 in the position of '+v(enter)+' and 0 everywhere else: it is a unit vector.</p>'+
+     '<div class="eqrow">'+blk(colVec(N.map(k=>k===enter?'1':'0'),N.map(k=>k===enter?'c-enter':'c-non')),'<i>d</i><sub>N</sub>')+
+     '<div style="margin-left:1em">'+N.map(k=>'<div>'+dsub(k)+' = '+(k===enter?'<b style="color:var(--enter)">1</b> &nbsp;<span class="note">(we increase '+v(k)+')</span>':'0 &nbsp;<span class="note">('+v(k)+' stays at 0)</span>')+'</div>').join('')+'</div></div>'+
+     '<p class="expl">Only <i>d</i><sub>B</sub>, the change in the basic variables, is still unknown.</p>';}},
+ {title:'4. Multiplying by a unit vector picks out a column',render(){
+   const N=nonbasic();
+   return '<p class="expl">In the product <i>N d</i><sub>N</sub>, every column of <i>N</i> is multiplied by its entry of <i>d</i><sub>N</sub>. All entries are 0 except the one for '+v(enter)+', so only that column survives:</p>'+
+     '<div class="eqrow">'+blk(matA(N,{highlight:enter}),'<i>N</i>')+op('·')+blk(colVec(N.map(k=>k===enter?'1':'0'),N.map(k=>k===enter?'c-enter':'c-non')),'<i>d</i><sub>N</sub>')+op('=')+
+       blk(colVec(A.map(r=>fmt(r[enter])),['c-enter','c-enter','c-enter']),'<i>A<sub>j</sub></i>, the column of '+v(enter))+'</div>'+
+     '<div class="keybox">So <i>Ad</i> = <i>B d</i><sub>B</sub> + <i>N d</i><sub>N</sub> = <i>B d</i><sub>B</sub> + <i>A<sub>j</sub></i>, and the condition <i>Ad</i> = 0 becomes <b><i>B d</i><sub>B</sub> = −<i>A<sub>j</sub></i></b>.</div>';}},
+ {title:'5. Solve for the basic part',render(){
+   const B=basis();const Bm=A.map(r=>B.map(k=>r[k]));const Bi=inv(Bm);const Aj=A.map(r=>r[enter]);const db=dB();
+   return '<p class="expl"><i>B</i> is invertible, because its columns are linearly independent. Multiplying <i>B d</i><sub>B</sub> = −<i>A<sub>j</sub></i> by <i>B</i><sup>−1</sup> gives</p>'+
+     '<div class="formula" style="text-align:center;font-size:1.3em"><i>d</i><sub>B</sub> = −<i>B</i><sup>−1</sup><i>A<sub>j</sub></i>.</div>'+
+     '<div class="eqrow">'+blk(colVec(B.map(k=>dsub(k)),B.map(()=>'c-basic')),'<i>d</i><sub>B</sub>')+op('=')+op('−')+blk(numMat(Bi),'<i>B</i><sup>−1</sup>')+op('·')+
+       blk(colVec(Aj.map(fmt),['c-enter','c-enter','c-enter']),'<i>A<sub>j</sub></i>')+op('=')+blk(colVec(db.map(fmt),B.map(()=>'c-basic')),'')+'</div>'+
+     '<p class="expl">Read it as: increasing '+v(enter)+' by one unit changes the basic variables by these amounts. A negative entry means that basic variable decreases.</p>';}},
+ {title:'6. The basic direction',render(){
+   const d=dFull();const all=[0,1,2,3,4];
+   return '<p class="expl">Put the pieces back in the original order of the variables:</p>'+
+     '<div class="eqrow">'+blk(colVec(all.map(k=>fmt(d[k])),all.map(k=>'c-'+cls(k))),'<i>d</i>')+
+     '<div style="margin-left:1em">'+all.map(k=>'<div>'+dsub(k)+' = '+fmt(d[k])+' &nbsp;<span class="note">'+(k===enter?'the variable we increase':basis().includes(k)?'basic: from −<i>B</i><sup>−1</sup><i>A<sub>j</sub></i>':'nonbasic: stays 0')+'</span></div>').join('')+'</div></div>'+
+     '<div class="keybox"><b>Basic direction:</b> <i>d<sub>j</sub></i> = 1, &nbsp;<i>d<sub>i</sub></i> = 0 for the other nonbasic <i>i</i>, &nbsp;<i>d</i><sub>B</sub> = −<i>B</i><sup>−1</sup><i>A<sub>j</sub></i>.</div>'+
+     '<p class="expl">Check: <i>Ad</i> = ('+mv(A,d).map(fmt).join(', ')+'). Use the θ slider to move along <i>d</i> in the picture.</p>';}}
+];
+
+/* ---- picture ---- */
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=400,R=[-0.8,4.6];
+const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>W-(y-R[0])/(R[1]-R[0])*W;
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;}
+const defs=el('defs',{});const mk=el('marker',{id:'ah',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'},defs);el('path',{d:'M0 0L10 5L0 10z',fill:'var(--enter)'},mk);
+const gStatic=el('g',{}),gDyn=el('g',{});
+for(let k=0;k<=4;k++){el('line',{x1:sx(k),y1:0,x2:sx(k),y2:W,stroke:'var(--grid)'},gStatic);el('line',{x1:0,y1:sy(k),x2:W,y2:sy(k),stroke:'var(--grid)'},gStatic);
+  if(k){el('text',{x:sx(k),y:sy(0)+15,'text-anchor':'middle','font-size':11,fill:'var(--muted)'},gStatic).textContent=k;el('text',{x:sx(0)-6,y:sy(k)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'},gStatic).textContent=k;}}
+el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)'},gStatic);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:W,stroke:'var(--axis)'},gStatic);
+el('path',{d:'M'+[[0,0],[3,0],[3,1],[1,3],[0,3]].map(p=>sx(p[0])+' '+sy(p[1])).join(' L')+' Z',fill:'var(--feasible-fill)',stroke:'var(--basic)','stroke-width':1.5},gStatic);
+function drawPic(){
+  while(gDyn.firstChild)gDyn.removeChild(gDyn.firstChild);
+  const x=xFull();const P=[x[0],x[1]];
+  const d=enter===null?null:dFull();
+  if(d&&step>=5){const L=1.2;const end=[P[0]+L*d[0],P[1]+L*d[1]];
+    el('line',{x1:sx(P[0]),y1:sy(P[1]),x2:sx(end[0]),y2:sy(end[1]),stroke:'var(--enter)','stroke-width':3,'marker-end':'url(#ah)'},gDyn);
+    const q=[P[0]+TH*d[0],P[1]+TH*d[1]];const xt=x.map((xi,k)=>xi+TH*d[k]);const feas=xt.every(t=>t>=-1e-9);
+    if(TH>0){el('line',{x1:sx(P[0]),y1:sy(P[1]),x2:sx(q[0]),y2:sy(q[1]),stroke:feas?'var(--good)':'var(--bad)','stroke-width':2,'stroke-dasharray':'5 4'},gDyn);
+      el('circle',{cx:sx(q[0]),cy:sy(q[1]),r:6,fill:feas?'var(--good)':'var(--panel)',stroke:feas?'var(--good)':'var(--bad)','stroke-width':2},gDyn);}
+    $('pos').innerHTML='<i>x</i> + θ<i>d</i> = ('+xt.map(fmt).join(', ')+')<br>'+(feas?'<span class="good">all variables ≥ 0: feasible</span>':'<span class="bad">some basic variable is negative: outside the polyhedron</span>');}
+  else $('pos').innerHTML='The direction appears in the picture at step 6.';
+  el('circle',{cx:sx(P[0]),cy:sy(P[1]),r:6,fill:'var(--ink)'},gDyn);
+  el('text',{x:sx(P[0])+9,y:sy(P[1])-9,'font-size':14,fill:'var(--ink)'},gDyn).textContent='x = '+BFS[bi].label;
+}
+
+/* ---- UI ---- */
+const PLAIN=['x₁','x₂','s₁','s₂','s₃'];
+BFS.forEach((B,i)=>{const o=document.createElement('option');o.value=i;o.textContent=B.label+', basis {'+B.basis.map(k=>PLAIN[k]).join(', ')+'}';$('bfs').appendChild(o);});
+function renderEnter(){const box=$('enterBtns');box.innerHTML='';nonbasic().forEach(k=>{const bt=document.createElement('button');bt.className='btn';bt.innerHTML=v(k);bt.setAttribute('aria-pressed',k===enter);bt.onclick=()=>{enter=k;TH=0;$('th').value=0;render();};box.appendChild(bt);});}
+STEPS.forEach((s,i)=>{const d=document.createElement('button');d.textContent=i+1;d.setAttribute('aria-label','Step '+(i+1)+': '+s.title);d.onclick=()=>{step=i;render();};$('dots').appendChild(d);});
+function render(){if(enter===null||!nonbasic().includes(enter))enter=nonbasic()[0];
+  renderEnter();[...$('dots').children].forEach((d,i)=>d.setAttribute('aria-current',i===step?'step':'false'));
+  $('step').innerHTML='<div class="steptitle">'+STEPS[step].title+'</div>'+STEPS[step].render();
+  $('prev').disabled=step===0;$('next').disabled=step===STEPS.length-1;$('tho').textContent=TH.toFixed(2);drawPic();}
+$('bfs').onchange=e=>{bi=+e.target.value;enter=null;TH=0;$('th').value=0;render();};
+$('prev').onclick=()=>{if(step>0){step--;render();}};$('next').onclick=()=>{if(step<STEPS.length-1){step++;render();}};
+$('th').addEventListener('input',e=>{TH=+e.target.value;if(step<5){step=5;}render();});
+document.addEventListener('keydown',e=>{if(['INPUT','SELECT'].includes(e.target.tagName))return;if(e.key==='ArrowRight'&&step<STEPS.length-1){step++;render();}if(e.key==='ArrowLeft'&&step>0){step--;render();}});
+render();
+})();
+</script>
+</body>
+</html>
