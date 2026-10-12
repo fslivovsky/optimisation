@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deriving reduced costs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --basic:#2F6F9F; --basic-bg:rgba(47,111,159,.13); --non:#8A929E; --non-bg:rgba(138,146,158,.12);
+  --enter:#C9781E; --enter-bg:rgba(201,120,30,.18); --bad:#A8325E; --good:#2E7D4F;
+  --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --card:#ECEFEB; --focus:#2F6F9F; --feasible-fill:rgba(47,111,159,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --basic:#6FB0E0; --basic-bg:rgba(111,176,224,.16); --non:#7D8792; --non-bg:rgba(125,135,146,.14);
+    --enter:#E3A63A; --enter-bg:rgba(227,166,58,.2); --bad:#E27AA6; --good:#5CC98A;
+    --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0; --feasible-fill:rgba(111,176,224,.2);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --basic:#6FB0E0; --basic-bg:rgba(111,176,224,.16); --non:#7D8792; --non-bg:rgba(125,135,146,.14);
+  --enter:#E3A63A; --enter-bg:rgba(227,166,58,.2); --bad:#E27AA6; --good:#5CC98A;
+  --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0; --feasible-fill:rgba(111,176,224,.2);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .6em;max-width:64em}
+main{padding:0 clamp(18px,4vw,60px) 32px;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:clamp(14px,2.5vw,36px);align-items:start}
+.pickers{display:flex;flex-wrap:wrap;gap:.6em 1.4em;align-items:center;margin-bottom:.8em}
+.pickers label{color:var(--ink-soft)}
+select,button.btn{font:inherit;font-size:.92em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.2em .6em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button.btn[aria-pressed="true"]{border-color:var(--enter);box-shadow:inset 0 0 0 1px var(--enter)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.stage{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:1em 1.2em;min-height:24em}
+.stepnav{display:flex;align-items:center;gap:.6em;margin-bottom:.7em;flex-wrap:wrap}
+.dots{display:flex;gap:.35em}
+.dots button{width:1.9em;height:1.9em;border-radius:50%;border:1px solid var(--rule);background:var(--panel);color:var(--ink-soft);font:inherit;font-size:.8em;cursor:pointer}
+.dots button[aria-current="step"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.steptitle{font-size:1.15em;font-weight:500;margin:.2em 0 .4em}
+.expl{color:var(--ink-soft);margin:.3em 0 .9em;max-width:46em}
+.eqrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 0.6em;margin:.6em 0 2.4em;padding-bottom:.2em}
+.op{font-size:1.4em;color:var(--ink-soft);padding:calc(1.6em / 1.4) .1em 0}
+.lbl{font-size:.85em;color:var(--muted);text-align:center;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:.25em;width:max-content;max-width:14em}
+.blk{display:flex;flex-direction:column;align-items:center;position:relative}
+table.m{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;position:relative}
+table.m td,table.m th{padding:.15em 0;text-align:center;width:2.5em;min-width:2.5em}
+.hdr{display:flex;align-items:flex-end;height:1.6em;padding:0 calc(.45em + 2px)}
+.hdr span{width:3.125em;text-align:center;font-size:.8em;color:var(--muted)}
+.hdr span.sep,.hdr span.sepL{border-left:2px dashed transparent}
+table.m th{font-weight:400;font-size:.8em;color:var(--muted)}
+table.m tbody{border-left:2px solid var(--ink);border-right:2px solid var(--ink)}
+table.m tbody tr:first-child td:first-child{border-top-left-radius:0}
+.bk{display:inline-flex;align-items:stretch}
+.bk::before,.bk::after{content:"";width:.45em;border:2px solid var(--ink-soft)}
+.bk::before{border-right:0;border-radius:4px 0 0 4px}
+.bk::after{border-left:0;border-radius:0 4px 4px 0}
+.c-basic{background:var(--basic-bg)} .c-non{background:var(--non-bg)} .c-enter{background:var(--enter-bg);font-weight:600}
+.h-basic{color:var(--basic)!important} .h-non{color:var(--non)!important} .h-enter{color:var(--enter)!important;font-weight:600}
+.sep{border-left:2px dashed var(--rule)}
+.unk{color:var(--muted);font-style:italic}
+.formula{font-size:1.15em;margin:.5em 0}
+.keybox{border-left:3px solid var(--enter);padding:.3em .8em;margin:.8em 0;background:var(--card);border-radius:0 6px 6px 0}
+.side{display:flex;flex-direction:column;gap:.8em;font-size:.92em}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px}
+.row{display:grid;grid-template-columns:1.4em 1fr 3em;align-items:center;gap:.6em}
+.row output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--enter)}
+.legend{display:flex;flex-wrap:wrap;gap:.3em 1em;font-size:.85em;color:var(--ink-soft)}
+.sw{display:inline-block;width:1em;height:1em;border-radius:3px;vertical-align:-.15em;margin-right:.3em}
+.note{color:var(--muted);font-size:.85em}
+.good{color:var(--good)} .bad{color:var(--bad)}
+i{font-style:italic}
+@media (max-width:980px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Deriving reduced costs</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">Moving from a basic feasible solution <i>x</i> along the basic direction <i>d</i> changes the cost <i>c</i><sup>T</sup><i>x</i>. Step through why the rate of change is the reduced cost <i>c̄<sub>j</sub></i> = <i>c<sub>j</sub></i> − <i>c</i><sub>B</sub><sup>T</sup><i>B</i><sup>−1</sup><i>A<sub>j</sub></i>, and why the reduced cost of every basic variable is 0. Running example in standard form: <i>x</i><sub>1</sub> + <i>x</i><sub>2</sub> + <i>s</i><sub>1</sub> = 4, <i>x</i><sub>1</sub> + <i>s</i><sub>2</sub> = 3, <i>x</i><sub>2</sub> + <i>s</i><sub>3</sub> = 3.</p>
+<main>
+  <section>
+    <div class="pickers">
+      <label>Basic feasible solution <select id="bfs"></select></label>
+      <label>Objective <select id="obj"></select></label>
+      <span id="enterWrap"><span style="color:var(--ink-soft)">Increase</span> <span id="enterBtns"></span></span>
+    </div>
+    <div class="stage">
+      <div class="stepnav">
+        <button class="btn" id="prev">← Previous</button>
+        <div class="dots" id="dots" aria-label="Steps"></div>
+        <button class="btn" id="next">Next →</button>
+      </div>
+      <div id="step" aria-live="polite"></div>
+    </div>
+  </section>
+  <aside class="side">
+    <svg id="b" class="board" viewBox="0 0 400 400" role="img" aria-label="The running example with the current basic feasible solution and the basic directions, labelled with their reduced costs"></svg>
+    <div id="verdict" style="color:var(--ink-soft)"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--basic-bg);border:1px solid var(--basic)"></span>basic</span>
+      <span><span class="sw" style="background:var(--non-bg);border:1px solid var(--non)"></span>nonbasic</span>
+      <span><span class="sw" style="background:var(--enter-bg);border:1px solid var(--enter)"></span>highlighted variable</span>
+    </div>
+    <p class="note">The arrows are the basic directions at the current vertex, labelled with their reduced costs. A negative reduced cost means the cost decreases in that direction.</p>
+  </aside>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+const NAMES=['x<sub>1</sub>','x<sub>2</sub>','s<sub>1</sub>','s<sub>2</sub>','s<sub>3</sub>'];
+const PLAIN=['x₁','x₂','s₁','s₂','s₃'];
+const A=[[1,1,1,0,0],[1,0,0,1,0],[0,1,0,0,1]];const b=[4,3,3];const m=3;
+const BFS=[{label:'(0, 0)',basis:[2,3,4]},{label:'(3, 0)',basis:[0,2,4]},{label:'(3, 1)',basis:[0,1,4]},{label:'(1, 3)',basis:[0,1,3]},{label:'(0, 3)',basis:[1,2,3]}];
+const OBJ=[{label:'minimise −x₁ − x₂',c:[-1,-1,0,0,0]},{label:'minimise −x₁ − 2x₂',c:[-1,-2,0,0,0]},{label:'minimise x₁ + x₂',c:[1,1,0,0,0]},{label:'minimise −2x₁ + x₂',c:[-2,1,0,0,0]}];
+const v=k=>'<i>'+NAMES[k].replace('<sub>','</i><sub>');
+function sub(sym,k){const raw=NAMES[k].replace(/<\/?sub>/g,'');return '<i>'+sym+'</i><sub>'+raw[0]+'<sub style="font-size:.8em">'+raw.slice(1)+'</sub></sub>';}
+function inv(M){const k=M.length;const a=M.map((r,i)=>r.concat(Array.from({length:k},(_,j)=>i===j?1:0)));
+  for(let c=0;c<k;c++){let p=c;for(let r=c+1;r<k;r++)if(Math.abs(a[r][c])>Math.abs(a[p][c]))p=r;[a[c],a[p]]=[a[p],a[c]];const pv=a[c][c];
+    for(let j=0;j<2*k;j++)a[c][j]/=pv;for(let r=0;r<k;r++)if(r!==c){const f=a[r][c];for(let j=0;j<2*k;j++)a[r][j]-=f*a[c][j];}}
+  return a.map(r=>r.slice(k));}
+const mv=(M,x)=>M.map(r=>r.reduce((s,a,i)=>s+a*x[i],0));
+const mm=(X,Y)=>X.map(r=>Y[0].map((_,j)=>r.reduce((s,a,i)=>s+a*Y[i][j],0)));
+const fmt=x=>{const r=Math.round(x*1000)/1000;const s=Object.is(r,-0)?0:r;return (s<0?'−'+Math.abs(s):String(s));};
+
+let bi=0,oi=0,enter=null,bsel=0,step=0;
+const basis=()=>BFS[bi].basis, c=()=>OBJ[oi].c;
+const nonbasic=()=>[0,1,2,3,4].filter(k=>!basis().includes(k));
+const Bmat=()=>A.map(r=>basis().map(k=>r[k]));
+function cbar(k){const Bi=inv(Bmat());const cB=basis().map(i=>c()[i]);const u=mv(Bi,A.map(r=>r[k]));return c()[k]-cB.reduce((s,x,i)=>s+x*u[i],0);}
+function dFull(j){const d=[0,0,0,0,0];d[j]=1;const db=mv(inv(Bmat()),A.map(r=>r[j])).map(t=>-t);basis().forEach((k,i)=>d[k]=db[i]);return d;}
+function cls(k){return k===enter?'enter':basis().includes(k)?'basic':'non';}
+
+/* rendering helpers (headers above the brackets, aligned with columns) */
+const hdr=cols=>'<div class="hdr">'+cols.map(h=>'<span class="'+(h.cls||'')+'">'+h.t+'</span>').join('')+'</div>';
+const spacer='<div class="hdr" aria-hidden="true"><span>&nbsp;</span></div>';
+function grid(M,cellCls,heads){let h='<span class="bk"><table class="m"><tbody>';M.forEach((r,ri)=>{h+='<tr>'+r.map((x,ci)=>'<td class="'+(cellCls?cellCls(ri,ci):'')+'">'+x+'</td>').join('')+'</tr>';});
+  return '<div style="display:flex;flex-direction:column;align-items:center">'+(heads?hdr(heads):spacer)+h+'</tbody></table></span></div>';}
+const blk=(inner,label)=>'<div class="blk">'+inner+(label?'<div class="lbl">'+label+'</div>':'')+'</div>';
+const op=s=>'<span class="op">'+s+'</span>';
+const rowOf=(vals,cols)=>grid([vals],(r,ci)=>'c-'+cls(cols[ci]),cols.map(k=>({t:v(k),cls:'h-'+cls(k)})));
+const colOf=(vals,cols)=>grid(vals.map(x=>[x]),(ri)=>'c-'+cls(cols[ri]));
+
+const STEPS=[
+ {title:'1. The cost changes at rate cᵀd',enter:true,render(){
+   const d=dFull(enter),all=[0,1,2,3,4];
+   return '<p class="expl">Moving from <i>x</i> to <i>x</i> + θ<i>d</i> changes the cost by <i>c</i><sup>T</sup>(<i>x</i> + θ<i>d</i>) − <i>c</i><sup>T</sup><i>x</i> = θ <i>c</i><sup>T</sup><i>d</i>. So <i>c</i><sup>T</sup><i>d</i> is the change in cost per unit step along <i>d</i>.</p>'+
+   '<div class="eqrow">'+blk(rowOf(all.map(k=>fmt(c()[k])),all),'<i>c</i><sup>T</sup>')+op('·')+blk(colOf(all.map(k=>fmt(d[k])),all),'<i>d</i> (increase '+v(enter)+')')+op('=')+blk(grid([[fmt(all.reduce((s,k)=>s+c()[k]*d[k],0))]]),'<i>c</i><sup>T</sup><i>d</i>')+'</div>'+
+   '<p class="expl">The basic direction <i>d</i> is the one derived on the basic directions page: 1 for '+v(enter)+', 0 for the other nonbasic variable, and <i>d</i><sub>B</sub> = −<i>B</i><sup>−1</sup><i>A<sub>j</sub></i> for the basic variables.</p>';}},
+ {title:'2. Split into basic and nonbasic parts',enter:true,render(){
+   const B=basis(),N=nonbasic(),d=dFull(enter);
+   return '<p class="expl">As for <i>Ad</i>, the product splits into the basic and the nonbasic entries:</p>'+
+   '<div class="eqrow">'+blk(rowOf(B.map(k=>fmt(c()[k])),B),'<i>c</i><sub>B</sub><sup>T</sup>')+op('·')+blk(colOf(B.map(k=>sub('d',k)),B),'<i>d</i><sub>B</sub>')+op('+')+
+     blk(rowOf(N.map(k=>fmt(c()[k])),N),'<i>c</i><sub>N</sub><sup>T</sup>')+op('·')+blk(colOf(N.map(k=>k===enter?'1':'0'),N),'<i>d</i><sub>N</sub>')+'</div>'+
+   '<p class="expl"><i>d</i><sub>N</sub> is a unit vector, so <i>c</i><sub>N</sub><sup>T</sup><i>d</i><sub>N</sub> just picks out the cost of '+v(enter)+': <i>c<sub>j</sub></i> = '+fmt(c()[enter])+'.</p>'+
+   '<div class="formula" style="text-align:center"><i>c</i><sup>T</sup><i>d</i> = <i>c</i><sub>B</sub><sup>T</sup><i>d</i><sub>B</sub> + <i>c<sub>j</sub></i></div>';}},
+ {title:'3. Substitute the basic part: the reduced cost',enter:true,render(){
+   const B=basis();const Bi=inv(Bmat());const Aj=A.map(r=>r[enter]);const u=mv(Bi,Aj);const cB=B.map(k=>c()[k]);const val=cbar(enter);
+   return '<p class="expl">Insert <i>d</i><sub>B</sub> = −<i>B</i><sup>−1</sup><i>A<sub>j</sub></i>:</p>'+
+   '<div class="formula" style="text-align:center;font-size:1.25em"><i>c</i><sup>T</sup><i>d</i> = <i>c<sub>j</sub></i> − <i>c</i><sub>B</sub><sup>T</sup><i>B</i><sup>−1</sup><i>A<sub>j</sub></i> =: <i>c̄<sub>j</sub></i>, the <b>reduced cost</b> of <i>x<sub>j</sub></i>.</div>'+
+   '<div class="eqrow">'+blk(grid([[fmt(c()[enter])]],()=>'c-enter'),'<i>c<sub>j</sub></i>')+op('−')+blk(rowOf(cB.map(fmt),B),'<i>c</i><sub>B</sub><sup>T</sup>')+op('·')+blk(grid(Bi.map(r=>r.map(fmt))),'<i>B</i><sup>−1</sup>')+op('·')+
+     blk(grid(Aj.map(x=>[fmt(x)]),()=>'c-enter'),'<i>A<sub>j</sub></i>')+op('=')+blk(grid([[fmt(val)]],()=>'c-enter'),'<i>c̄<sub>j</sub></i>')+'</div>'+
+   '<p class="expl">'+(val<-1e-9?'Negative: increasing '+v(enter)+' <b>decreases</b> the cost, so this vertex is not optimal.':val>1e-9?'Positive: increasing '+v(enter)+' increases the cost.':'Zero: increasing '+v(enter)+' does not change the cost. The edge in this direction consists of points with the same cost.')+'</p>';}},
+ {title:'4. Why basic variables have reduced cost 0',enter:false,render(){
+   const B=basis();const Bm=Bmat();const Bi=inv(Bm);const I=mm(Bi,Bm);const k=B[bsel];const i=bsel;
+   const hl=(ri,ci)=>ci===i?'c-enter':'';
+   const btns='<div class="pickers" style="margin:.2em 0 .6em"><span style="color:var(--ink-soft)">Basic variable</span> '+B.map((kk,ii)=>'<button class="btn bsel" data-i="'+ii+'" aria-pressed="'+(ii===i)+'">'+v(kk)+'</button>').join(' ')+'</div>';
+   return btns+'<p class="expl">The formula <i>c̄<sub>k</sub></i> = <i>c<sub>k</sub></i> − <i>c</i><sub>B</sub><sup>T</sup><i>B</i><sup>−1</sup><i>A<sub>k</sub></i> makes sense for every variable. For a basic variable '+v(k)+' = <i>x</i><sub>B('+(i+1)+')</sub>, its column <i>A</i><sub>B('+(i+1)+')</sub> is column '+(i+1)+' of <i>B</i>. Look at column '+(i+1)+' of <i>B</i><sup>−1</sup><i>B</i> = <i>I</i>:</p>'+
+   '<div class="eqrow">'+blk(grid(Bi.map(r=>r.map(fmt))),'<i>B</i><sup>−1</sup>')+op('·')+blk(grid(Bm.map(r=>r.map(fmt)),hl,B.map((kk,ii)=>({t:v(kk),cls:ii===i?'h-enter':'h-basic'}))),'<i>B</i>')+op('=')+blk(grid(I.map(r=>r.map(fmt)),hl),'<i>I</i>')+'</div>'+
+   '<div class="keybox">Column '+(i+1)+' on both sides: <i>B</i><sup>−1</sup><i>A</i><sub>B('+(i+1)+')</sub> = <i>e</i><sub>'+(i+1)+'</sub>, the '+(i+1)+(i===0?'st':i===1?'nd':'rd')+' unit vector.</div>'+
+   '<div class="eqrow">'+blk(grid([B.map(kk=>fmt(c()[kk]))],(r,ci)=>ci===i?'c-enter':'c-basic',B.map((kk,ii)=>({t:v(kk),cls:ii===i?'h-enter':'h-basic'}))),'<i>c</i><sub>B</sub><sup>T</sup>')+op('·')+blk(grid([0,1,2].map(r=>[r===i?'1':'0']),(ri)=>ri===i?'c-enter':''),'<i>e</i><sub>'+(i+1)+'</sub>')+op('=')+blk(grid([[fmt(c()[k])]],()=>'c-enter'),'<i>c</i><sub>B('+(i+1)+')</sub>')+'</div>'+
+   '<div class="formula" style="text-align:center">so &nbsp;<i>c̄</i><sub>B('+(i+1)+')</sub> = <i>c</i><sub>B('+(i+1)+')</sub> − <i>c</i><sub>B</sub><sup>T</sup><i>e</i><sub>'+(i+1)+'</sub> = '+fmt(c()[k])+' − '+fmt(c()[k]).replace(/^−/,'(−')+(c()[k]<0?')':'')+' = 0.</div>';}},
+ {title:'5. All reduced costs at this vertex',enter:false,render(){
+   const all=[0,1,2,3,4];const cb=all.map(cbar);const opt=nonbasic().every(k=>cb[k]>=-1e-9);
+   return '<p class="expl">Computing <i>c̄<sub>k</sub></i> for every variable gives 0 for the basic variables, as just shown, and the rates of change along the basic directions for the nonbasic ones:</p>'+
+   '<div class="eqrow">'+blk(grid([all.map(k=>fmt(cb[k]))],(r,ci)=>basis().includes(all[ci])?'c-basic':'c-non',all.map(k=>({t:v(k),cls:basis().includes(k)?'h-basic':'h-non'}))),'<i>c̄</i><sup>T</sup> = <i>c</i><sup>T</sup> − <i>c</i><sub>B</sub><sup>T</sup><i>B</i><sup>−1</sup><i>A</i>')+'</div>'+
+   '<div class="keybox">'+(opt?'<span class="good">All reduced costs are ≥ 0, so this basic feasible solution is optimal.</span>'+(nonbasic().some(k=>Math.abs(cb[k])<1e-9)?' A nonbasic variable has reduced cost 0, so there is another optimal solution along that edge.':''):'<span class="bad">Some reduced cost is negative, so moving along that basic direction decreases the cost: this basic feasible solution is not optimal.</span>')+'</div>';}}
+];
+
+/* picture */
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=400,R=[-0.8,4.6];
+const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>W-(y-R[0])/(R[1]-R[0])*W;
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;}
+const defs=el('defs',{});[['ahg','var(--good)'],['ahb','var(--bad)'],['ahn','var(--non)']].forEach(([id,col])=>{const mk=el('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'},defs);el('path',{d:'M0 0L10 5L0 10z',fill:col},mk);});
+const gS=el('g',{}),gD=el('g',{});
+for(let k=0;k<=4;k++){el('line',{x1:sx(k),y1:0,x2:sx(k),y2:W,stroke:'var(--grid)'},gS);el('line',{x1:0,y1:sy(k),x2:W,y2:sy(k),stroke:'var(--grid)'},gS);
+  if(k){el('text',{x:sx(k),y:sy(0)+15,'text-anchor':'middle','font-size':11,fill:'var(--muted)'},gS).textContent=k;el('text',{x:sx(0)-6,y:sy(k)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'},gS).textContent=k;}}
+el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)'},gS);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:W,stroke:'var(--axis)'},gS);
+el('path',{d:'M'+[[0,0],[3,0],[3,1],[1,3],[0,3]].map(p=>sx(p[0])+' '+sy(p[1])).join(' L')+' Z',fill:'var(--feasible-fill)',stroke:'var(--basic)','stroke-width':1.5},gS);
+function drawPic(){while(gD.firstChild)gD.removeChild(gD.firstChild);
+  const xb=mv(inv(Bmat()),b);const x=[0,0,0,0,0];basis().forEach((k,i)=>x[k]=xb[i]);const P=[x[0],x[1]];
+  nonbasic().forEach(j=>{const d=dFull(j);const len=Math.hypot(d[0],d[1]);const L=1.1/len;const E=[P[0]+L*d[0],P[1]+L*d[1]];const cb=cbar(j);
+    const col=cb<-1e-9?'good':cb>1e-9?'bad':'non';const id=col==='good'?'ahg':col==='bad'?'ahb':'ahn';
+    el('line',{x1:sx(P[0]),y1:sy(P[1]),x2:sx(E[0]),y2:sy(E[1]),stroke:'var(--'+col+')','stroke-width':j===enter&&STEPS[step].enter?4:2.5,'marker-end':'url(#'+id+')'},gD);
+    const t=el('text',{x:sx(E[0])+6,y:sy(E[1])-6,'font-size':13,fill:'var(--'+col+')'},gD);t.innerHTML='c̄('+PLAIN[j]+') = '+fmt(cb);});
+  el('circle',{cx:sx(P[0]),cy:sy(P[1]),r:6,fill:'var(--ink)'},gD);
+  el('text',{x:W-10,y:20,'text-anchor':'end','font-size':13,fill:'var(--ink-soft)'},gD).textContent=OBJ[oi].label;
+  const opt=nonbasic().every(k=>cbar(k)>=-1e-9);
+  $('verdict').innerHTML='At '+BFS[bi].label+': '+(opt?'<span class="good">optimal</span> (no negative reduced cost)':'<span class="bad">not optimal</span> (a negative reduced cost)');}
+
+/* UI */
+BFS.forEach((B,i)=>{const o=document.createElement('option');o.value=i;o.textContent=B.label+', basis {'+B.basis.map(k=>PLAIN[k]).join(', ')+'}';$('bfs').appendChild(o);});
+OBJ.forEach((O,i)=>{const o=document.createElement('option');o.value=i;o.textContent=O.label;$('obj').appendChild(o);});
+STEPS.forEach((s,i)=>{const d=document.createElement('button');d.textContent=i+1;d.setAttribute('aria-label','Step '+(i+1)+': '+s.title);d.onclick=()=>{step=i;render();};$('dots').appendChild(d);});
+function render(){if(enter===null||!nonbasic().includes(enter))enter=nonbasic()[0];if(bsel>2)bsel=0;
+  const st=STEPS[step];$('enterWrap').style.display=st.enter?'':'none';
+  const box=$('enterBtns');box.innerHTML='';nonbasic().forEach(k=>{const bt=document.createElement('button');bt.className='btn';bt.innerHTML=v(k);bt.setAttribute('aria-pressed',k===enter);bt.onclick=()=>{enter=k;render();};box.appendChild(bt);});
+  [...$('dots').children].forEach((d,i)=>d.setAttribute('aria-current',i===step?'step':'false'));
+  $('step').innerHTML='<div class="steptitle">'+st.title.replace('cᵀd','<i>c</i><sup>T</sup><i>d</i>')+'</div>'+st.render();
+  $('step').querySelectorAll('.bsel').forEach(bt=>bt.onclick=()=>{bsel=+bt.dataset.i;render();});
+  $('prev').disabled=step===0;$('next').disabled=step===STEPS.length-1;drawPic();}
+$('bfs').onchange=e=>{bi=+e.target.value;enter=null;render();};
+$('obj').onchange=e=>{oi=+e.target.value;render();};
+$('prev').onclick=()=>{if(step>0){step--;render();}};$('next').onclick=()=>{if(step<STEPS.length-1){step++;render();}};
+document.addEventListener('keydown',e=>{if(['INPUT','SELECT'].includes(e.target.tagName))return;if(e.key==='ArrowRight'&&step<STEPS.length-1){step++;render();}if(e.key==='ArrowLeft'&&step>0){step--;render();}});
+render();
+})();
+</script>
+</body>
+</html>
