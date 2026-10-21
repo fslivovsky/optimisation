@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simplex tableau stepper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --basic:#2F6F9F; --row0:#ECEFEB; --col:rgba(201,120,30,.16); --piv:rgba(201,120,30,.45); --accent:#C9781E;
+  --bad:#A8325E; --good:#2E7D4F; --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --card:#ECEFEB; --focus:#2F6F9F; --feasible-fill:rgba(47,111,159,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --basic:#6FB0E0; --row0:#20262E; --col:rgba(227,166,58,.18); --piv:rgba(227,166,58,.5); --accent:#E3A63A;
+    --bad:#E27AA6; --good:#5CC98A; --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0; --feasible-fill:rgba(111,176,224,.2);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --basic:#6FB0E0; --row0:#20262E; --col:rgba(227,166,58,.18); --piv:rgba(227,166,58,.5); --accent:#E3A63A;
+  --bad:#E27AA6; --good:#5CC98A; --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0; --feasible-fill:rgba(111,176,224,.2);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .6em;max-width:64em}
+main{padding:0 clamp(18px,4vw,60px) 32px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,.85fr);gap:clamp(14px,2.5vw,36px);align-items:start}
+.pickers{display:flex;flex-wrap:wrap;gap:.6em 1.2em;align-items:center;margin-bottom:.8em}
+.pickers label{color:var(--ink-soft)}
+select,button.btn{font:inherit;font-size:.92em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.2em .7em;cursor:pointer}
+button.btn:hover:not(:disabled){border-color:var(--ink-soft)}
+button.btn:disabled{opacity:.45;cursor:default}
+button.primary{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,td.click:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+label.chk{display:inline-flex;align-items:center;gap:.4em;cursor:pointer}
+.stage{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:1em 1.2em}
+.problem{color:var(--ink-soft);margin:0 0 .8em;line-height:1.7}
+.tabwrap{overflow-x:auto}
+table.tab{border-collapse:collapse;font-variant-numeric:tabular-nums;margin:.2em 0 .6em}
+table.tab th,table.tab td{border:1px solid var(--rule);padding:.25em .7em;text-align:center;min-width:3.2em}
+table.tab th{font-weight:500;color:var(--ink-soft);background:var(--panel)}
+table.tab td.lab{font-style:italic;color:var(--ink-soft)}
+table.tab tr.r0 td{background:var(--row0)}
+table.tab td.colsel{background:var(--col)}
+table.tab tr.rowsel td:not(.lab):not(.ratio){background:var(--col)}
+table.tab td.pivot{background:var(--piv)!important;font-weight:600}
+table.tab td.neg{color:var(--bad);font-weight:600}
+table.tab td.click{cursor:pointer}
+table.tab td.click:hover{outline:2px solid var(--accent);outline-offset:-2px}
+table.tab td.ratio{color:var(--muted);border:none;text-align:left;min-width:6em}
+table.tab td.ratio.best{color:var(--accent);font-weight:600}
+table.tab th.ratio{border:none;background:none}
+.controls{display:flex;flex-wrap:wrap;gap:.5em .8em;align-items:center;margin:.4em 0}
+.status{margin:.6em 0;min-height:2.6em}
+.good{color:var(--good)} .bad{color:var(--bad)} .acc{color:var(--accent)}
+.log{background:var(--card);border-radius:6px;padding:.5em .9em;margin-top:.6em;font-size:.92em}
+.log h3{font-size:.95em;font-weight:500;margin:.1em 0 .3em;color:var(--ink-soft)}
+.log ol{margin:.2em 0 .2em 1.2em;padding:0}
+.side{display:flex;flex-direction:column;gap:.7em;font-size:.92em}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:980px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Simplex tableau stepper</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">Run the Simplex method on a tableau. Click a <span class="bad">negative</span> entry in row 0 to choose the entering variable. The ratio test then picks the pivot row (or you pick it yourself), and <i>Pivot</i> carries out the row operations. Row 0 holds minus the cost and the reduced costs. The other rows hold the values of the basic variables and <i>B</i><sup>−1</sup><i>A</i>.</p>
+<main>
+  <section>
+    <div class="pickers">
+      <label>Problem <select id="prob"></select></label>
+      <button class="btn" id="random">New random problem</button>
+      <label class="chk"><input type="checkbox" id="practice"> <span>I choose the pivot row myself</span></label>
+    </div>
+    <div class="stage">
+      <p class="problem" id="problem"></p>
+      <div class="tabwrap"><table class="tab" id="tab"></table></div>
+      <div class="controls">
+        <button class="btn primary" id="pivot" disabled>Pivot</button>
+        <button class="btn" id="undo" disabled>Undo</button>
+        <button class="btn" id="reset">Start again</button>
+      </div>
+      <div class="status" id="status" aria-live="polite"></div>
+      <div class="log" id="log" hidden><h3>Row operations of the last pivot</h3><ol id="ops"></ol></div>
+    </div>
+  </section>
+  <aside class="side">
+    <svg id="b" class="board" viewBox="0 0 400 400" role="img" aria-label="The feasible region with the current basic feasible solution and the path of the Simplex method"></svg>
+    <div id="where" style="color:var(--ink-soft)"></div>
+    <p class="note">The picture shows the feasible region in the (<i>x</i><sub>1</sub>, <i>x</i><sub>2</sub>) plane. The dark dot is the current basic feasible solution, the orange line the path so far, and the arrow the basic direction of the selected column.</p>
+  </aside>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+/* ---------- exact fractions ---------- */
+const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;};
+class Fr{constructor(n,d=1){if(d<0){n=-n;d=-d;}const g=gcd(n,d);this.n=n/g;this.d=d/g;}
+  add(o){return new Fr(this.n*o.d+o.n*this.d,this.d*o.d);} sub(o){return new Fr(this.n*o.d-o.n*this.d,this.d*o.d);}
+  mul(o){return new Fr(this.n*o.n,this.d*o.d);} div(o){return new Fr(this.n*o.d,this.d*o.n);}
+  sign(){return Math.sign(this.n);} isZero(){return this.n===0;} val(){return this.n/this.d;} lt(o){return this.n*o.d<o.n*this.d;} eq(o){return this.n===o.n&&this.d===o.d;}
+  toString(){const s=this.n<0?'−':'';const a=Math.abs(this.n);return this.d===1?s+a:s+a+'/'+this.d;}}
+const F=x=>new Fr(x);
+
+/* ---------- problems: minimise c^T x subject to A x <= b, x >= 0, with b >= 0 ---------- */
+const PRESETS=[
+ {label:'Running example: minimise −x₁ − x₂',A:[[1,1],[1,0],[0,1]],b:[4,3,3],c:[-1,-1]},
+ {label:'Running example: minimise −x₁ − 2x₂',A:[[1,1],[1,0],[0,1]],b:[4,3,3],c:[-1,-2]},
+ {label:'Running example: minimise −2x₁ − x₂',A:[[1,1],[1,0],[0,1]],b:[4,3,3],c:[-2,-1]},
+ {label:'An unbounded linear program',A:[[1,-1]],b:[1],c:[-1,-1]}
+];
+let P,tab,basis,names,hist,path,selCol,selRow,lastOps;
+const SUB='₀₁₂₃₄₅₆₇₈₉';const sub=k=>String(k).split('').map(d=>SUB[+d]).join('');
+function load(p){P=p;const m=p.A.length;names=['x₁','x₂'].concat(Array.from({length:m},(_,i)=>'s'+sub(i+1)));
+  tab=[[F(0)].concat(p.c.map(F)).concat(Array.from({length:m},()=>F(0)))];
+  p.A.forEach((r,i)=>tab.push([F(p.b[i])].concat(r.map(F)).concat(Array.from({length:m},(_,j)=>F(i===j?1:0)))));
+  basis=Array.from({length:m},(_,i)=>2+i);hist=[];path=[point()];selCol=null;selRow=null;lastOps=null;render();}
+function point(){const x=[F(0),F(0)];basis.forEach((k,i)=>{if(k<2)x[k]=tab[i+1][0];});return x;}
+const ncol=()=>tab[0].length-1;
+function status(){for(let j=0;j<ncol();j++)if(tab[0][j+1].sign()<0)return 'continue';return 'optimal';}
+function ratios(j){return tab.slice(1).map(r=>r[j+1].sign()>0?r[0].div(r[j+1]):null);}
+function bestRows(j){const rs=ratios(j);let best=null;rs.forEach(r=>{if(r&&(best===null||r.lt(best)))best=r;});return rs.map((r,i)=>r&&best&&r.eq(best)?i:-1).filter(i=>i>=0);}
+
+/* ---------- pivot ---------- */
+function doPivot(){const r=selRow+1,j=selCol+1;const ops=[];const pv=tab[r][j];
+  hist.push({tab:tab.map(row=>row.slice()),basis:basis.slice(),path:path.slice()});
+  const rowName=i=>i===0?'row 0':'row '+names[basis[i-1]];
+  if(!(pv.n===1&&pv.d===1)){tab[r]=tab[r].map(x=>x.div(pv));ops.push('Divide '+rowName(r)+' by '+pv+'.');}
+  else ops.push('The pivot element is 1, so '+rowName(r)+' stays as it is.');
+  for(let i=0;i<tab.length;i++){if(i===r)continue;const f=tab[i][j];if(f.isZero())continue;
+    tab[i]=tab[i].map((x,k)=>x.sub(f.mul(tab[r][k])));
+    const absf=new Fr(Math.abs(f.n),f.d);const mult=(absf.n===1&&absf.d===1)?'':absf+' × ';
+    ops.push((f.sign()>0?'Subtract ':'Add ')+mult+'the pivot row '+(f.sign()>0?'from ':'to ')+rowName(i)+'.');}
+  const leaving=names[basis[selRow]];basis[selRow]=selCol;
+  ops.push(names[selCol]+' enters the basis and '+leaving+' leaves.');
+  lastOps=ops;path.push(point());selCol=null;selRow=null;render();}
+
+/* ---------- rendering ---------- */
+function render(){
+  const m=tab.length-1,n=ncol();const practice=$('practice').checked;
+  // problem text
+  const term=(c,v,first)=>{if(c===0)return '';const a=Math.abs(c);const co=a===1?'':String(a);return (first?(c<0?'−':''):(c<0?' − ':' + '))+co+v;};
+  const lin=(cs)=>{let s='';cs.forEach((c,k)=>{const t=term(c,'<i>x</i><sub>'+(k+1)+'</sub>',s==='');s+=t;});return s||'0';};
+  $('problem').innerHTML='minimise '+lin(P.c)+'<br>subject to '+P.A.map((r,i)=>lin(r)+' ≤ '+P.b[i]).join(',&nbsp; ')+',&nbsp; <i>x</i> ≥ 0';
+  // table
+  let h='<thead><tr><th></th><th>value</th>'+names.map(nm=>'<th>'+nm+'</th>').join('')+(selCol!==null?'<th class="ratio">ratio</th>':'')+'</tr></thead><tbody>';
+  const rs=selCol!==null?ratios(selCol):null;const best=selCol!==null?bestRows(selCol):[];
+  tab.forEach((row,i)=>{const isR0=i===0;const rowSel=!isR0&&selRow===i-1;
+    h+='<tr class="'+(isR0?'r0':'')+(rowSel?' rowsel':'')+'"><td class="lab">'+(isR0?'row 0':names[basis[i-1]])+'</td>';
+    row.forEach((v,k)=>{const j=k-1;let cls=[];
+      if(isR0&&k>0&&v.sign()<0){cls.push('neg','click');}
+      if(selCol!==null&&j===selCol)cls.push('colsel');
+      if(rowSel&&j===selCol)cls.push('pivot');
+      if(!isR0&&practice&&selCol!==null&&selRow===null&&k>0&&j===selCol)cls.push('click');
+      const attrs=cls.includes('click')?' tabindex="0" role="button" data-r="'+i+'" data-c="'+j+'"':'';
+      h+='<td class="'+cls.join(' ')+'"'+attrs+'>'+v+'</td>';});
+    if(selCol!==null){if(isR0)h+='<td class="ratio"></td>';else{const r=rs[i-1];const show=!practice||selRow!==null;
+      h+='<td class="ratio'+(show&&best.includes(i-1)?' best':'')+'">'+(r?(show?row[0]+' / '+row[selCol+1]+' = '+r:'?'):'—')+'</td>';}}
+    h+='</tr>';});
+  $('tab').innerHTML=h+'</tbody>';
+  $('tab').querySelectorAll('td.click').forEach(td=>{const act=()=>clickCell(+td.dataset.r,+td.dataset.c);td.onclick=act;td.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}};});
+  // status
+  let st='';const stt=status();
+  if(stt==='optimal'){const cost=tab[0][0].mul(F(-1));st='<span class="good">All reduced costs are ≥ 0: this basic feasible solution is optimal.</span> Optimal cost '+cost+' (the top-left entry is minus the cost).'+
+      (Array.from({length:n},(_,j)=>j).some(j=>!basis.includes(j)&&tab[0][j+1].isZero())?' A nonbasic variable has reduced cost 0, so there are other optimal solutions.':'');}
+  else if(selCol===null)st='Click a negative entry in row 0 to choose the entering variable.';
+  else{const rsAll=ratios(selCol);if(rsAll.every(r=>r===null))st='<span class="bad">The '+names[selCol]+' column has no positive entry below row 0.</span> Increasing '+names[selCol]+' never drives a basic variable to 0, and the cost decreases at rate '+tab[0][selCol+1].mul(F(-1))+': the optimal cost is −∞.';
+    else if(selRow===null)st=practice?'Now click the entry in the '+names[selCol]+' column of the pivot row. Use the ratio test.':'';
+    else{st='<span class="acc">Pivot element: row '+names[basis[selRow]]+', column '+names[selCol]+'.</span> '+names[selCol]+' enters, '+names[basis[selRow]]+' leaves. Press <i>Pivot</i>.'+(best.length>1?' Several rows share the smallest ratio, so any of them could be chosen. This case comes up again next lecture.':'');}}
+  if(st.startsWith('<span class="acc">')&&practice&&window.__fb)st=window.__fb+' '+st;
+  window.__fb=null;
+  $('status').innerHTML=st;
+  $('pivot').disabled=!(selCol!==null&&selRow!==null);$('undo').disabled=hist.length===0;
+  $('log').hidden=!lastOps;if(lastOps)$('ops').innerHTML=lastOps.map(o=>'<li>'+o+'</li>').join('');
+  drawPic();
+  const x=point();$('where').innerHTML='Current basic feasible solution: (<i>x</i><sub>1</sub>, <i>x</i><sub>2</sub>) = ('+x[0]+', '+x[1]+'), cost '+tab[0][0].mul(F(-1))+'. Pivots so far: '+hist.length+'.';
+}
+function clickCell(r,c){
+  if(r===0){if(tab[0][c+1].sign()>=0)return;selCol=c;selRow=null;if(!$('practice').checked){const b=bestRows(c);selRow=b.length?b[0]:null;}render();return;}
+  // practice mode: choosing the row
+  const rs=ratios(selCol);const best=bestRows(selCol);const i=r-1;
+  if(rs[i]===null){$('status').innerHTML='<span class="bad">Not this row:</span> its entry in the '+names[selCol]+' column is not positive, so it is skipped in the ratio test.';return;}
+  if(!best.includes(i)){$('status').innerHTML='<span class="bad">Not this row:</span> its ratio is '+rs[i]+', but another row has a smaller ratio. Moving that far would make another basic variable negative.';return;}
+  window.__fb='<span class="good">Correct.</span>';selRow=i;render();}
+
+/* ---------- picture ---------- */
+const NS='http://www.w3.org/2000/svg',svg=$('b');const W=400;let R=[-0.6,4.6];
+const sx=x=>(x-R[0])/(R[1]-R[0])*W, sy=y=>W-(y-R[0])/(R[1]-R[0])*W;
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;}
+const defs=el('defs',{});const mk=el('marker',{id:'ah',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'},defs);el('path',{d:'M0 0L10 5L0 10z',fill:'var(--accent)'},mk);
+const g=el('g',{});
+function clip(poly,a,b){const out=[];for(let i=0;i<poly.length;i++){const p=poly[i],q=poly[(i+1)%poly.length];const fp=a[0]*p[0]+a[1]*p[1]-b,fq=a[0]*q[0]+a[1]*q[1]-b;
+  if(fp<=1e-12)out.push(p);if((fp<-1e-12&&fq>1e-12)||(fp>1e-12&&fq<-1e-12)){const t=fp/(fp-fq);out.push([p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1])]);}}return out;}
+function drawPic(){while(g.firstChild)g.removeChild(g.firstChild);
+  let mx=4;P.A.forEach((r,i)=>{if(r[0]>0)mx=Math.max(mx,P.b[i]/r[0]);if(r[1]>0)mx=Math.max(mx,P.b[i]/r[1]);});
+  if(P.A.some(r=>r[0]<=0&&r[1]<=0)||P.label.startsWith('An unbounded'))mx=Math.max(mx,4.5);
+  const hi=Math.min(Math.ceil(mx)+0.6,30);R=[-0.08*hi,hi];
+  const st=hi>12?Math.ceil(hi/8):1;
+  for(let k=0;k<=hi;k+=st){el('line',{x1:sx(k),y1:0,x2:sx(k),y2:W,stroke:'var(--grid)'},g);el('line',{x1:0,y1:sy(k),x2:W,y2:sy(k),stroke:'var(--grid)'},g);
+    if(k){el('text',{x:sx(k),y:sy(0)+14,'text-anchor':'middle','font-size':11,fill:'var(--muted)'},g).textContent=k;el('text',{x:sx(0)-5,y:sy(k)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'},g).textContent=k;}}
+  el('line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)'},g);el('line',{x1:sx(0),y1:0,x2:sx(0),y2:W,stroke:'var(--axis)'},g);
+  let poly=[[0,0],[R[1]+5,0],[R[1]+5,R[1]+5],[0,R[1]+5]];P.A.forEach((r,i)=>{poly=clip(poly,r,P.b[i]);});
+  if(poly.length)el('path',{d:'M'+poly.map(p=>sx(p[0])+' '+sy(p[1])).join(' L')+' Z',fill:'var(--feasible-fill)',stroke:'var(--basic)','stroke-width':1.5},g);
+  if(path.length>1)el('polyline',{points:path.map(p=>sx(p[0].val())+','+sy(p[1].val())).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':3},g);
+  path.slice(0,-1).forEach(p=>el('circle',{cx:sx(p[0].val()),cy:sy(p[1].val()),r:4,fill:'var(--accent)'},g));
+  const x=point();const X=[x[0].val(),x[1].val()];
+  if(selCol!==null){const d=[0,0];if(selCol<2)d[selCol]=1;basis.forEach((k,i)=>{if(k<2)d[k]=-tab[i+1][selCol+1].val();});
+    const len=Math.hypot(d[0],d[1]);if(len>1e-9){const L=Math.max(0.9,hi*0.18)/len;el('line',{x1:sx(X[0]),y1:sy(X[1]),x2:sx(X[0]+L*d[0]),y2:sy(X[1]+L*d[1]),stroke:'var(--accent)','stroke-width':3,'marker-end':'url(#ah)'},g);}}
+  el('circle',{cx:sx(X[0]),cy:sy(X[1]),r:6.5,fill:status()==='optimal'?'var(--good)':'var(--ink)'},g);}
+
+/* ---------- random problems ---------- */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+function randomProblem(){const m=3;const A=[],b=[];
+  for(let i=0;i<m;i++){A.push([rnd(0,3),rnd(0,3)]);if(A[i][0]+A[i][1]===0)A[i][rnd(0,1)]=rnd(1,3);b.push(rnd(4,12));}
+  for(let j=0;j<2;j++)if(A.every(r=>r[j]===0))A[rnd(0,m-1)][j]=rnd(1,3);
+  const c=[-rnd(1,4),-rnd(0,4)];if(Math.random()<0.5)c.reverse();
+  return {label:'Random problem',A,b,c};}
+
+/* ---------- UI ---------- */
+PRESETS.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p.label;$('prob').appendChild(o);});
+const optR=document.createElement('option');optR.value='r';optR.textContent='Random problem';$('prob').appendChild(optR);
+let lastRandom=null;
+$('prob').onchange=e=>{if(e.target.value==='r'){lastRandom=lastRandom||randomProblem();load(lastRandom);}else load(PRESETS[+e.target.value]);};
+$('random').onclick=()=>{lastRandom=randomProblem();$('prob').value='r';load(lastRandom);};
+$('pivot').onclick=doPivot;
+$('undo').onclick=()=>{const h=hist.pop();if(!h)return;tab=h.tab;basis=h.basis;path=h.path;selCol=null;selRow=null;lastOps=null;render();};
+$('reset').onclick=()=>load(P);
+$('practice').onchange=()=>{if(selCol!==null){selRow=$('practice').checked?null:(bestRows(selCol)[0]??null);}render();};
+window.__state=()=>({A:P.A,b:P.b,c:P.c,cost:tab[0][0].mul(F(-1)).val(),status:status()});
+load(PRESETS[0]);
+})();
+</script>
+</body>
+</html>
