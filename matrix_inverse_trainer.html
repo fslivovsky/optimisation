@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Matrix inverse trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --accent:#C9781E; --good:#2E7D4F; --bad:#A8325E; --panel:#FFFFFF; --card:#ECEFEB; --focus:#2F6F9F;
+  --hl:rgba(201,120,30,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --accent:#E3A63A; --good:#5CC98A; --bad:#E27AA6; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0;
+    --hl:rgba(227,166,58,.17);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --accent:#E3A63A; --good:#5CC98A; --bad:#E27AA6; --panel:#1B2027; --card:#20262E; --focus:#6FB0E0;
+  --hl:rgba(227,166,58,.17);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:.6em 1.2em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .3em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:62em}
+main{padding:0 clamp(18px,4vw,60px) 40px;display:grid;grid-template-columns:minmax(280px,.9fr) minmax(0,1.3fr);gap:clamp(14px,2.5vw,40px);align-items:start}
+.lp{position:sticky;top:calc(12px + env(safe-area-inset-top,0px));background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:1em 1.2em}
+.lp h2,.steps h2{font-size:1.05em;font-weight:500;margin:0 0 .4em;color:var(--ink-soft)}
+.lp h2.second{margin-top:.9em}
+.controls{display:flex;flex-wrap:wrap;gap:.45em .7em;align-items:center;margin-top:.9em}
+button.btn,select{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.22em .75em;cursor:pointer}
+button.btn:hover{border-color:var(--ink-soft)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+label.chk{display:flex;gap:.4em;align-items:center;font-size:.9em;color:var(--ink-soft)}
+.score{color:var(--ink-soft);font-size:.9em;margin-top:.7em}
+.steps{display:flex;flex-direction:column;gap:.8em}
+.card{background:var(--card);border-radius:8px;padding:.85em 1.1em;border-left:4px solid transparent}
+.card.done-good{border-left-color:var(--good)} .card.done-bad{border-left-color:var(--bad)} .card.done-shown{border-left-color:var(--muted)}
+.card .q{margin-bottom:.5em}
+.card .tag{font-size:.85em;color:var(--accent);font-weight:500}
+.opts{display:flex;flex-wrap:wrap;gap:.4em}
+.opts button{font:inherit;font-size:.92em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.25em .8em;cursor:pointer;text-align:left}
+.opts button:hover:not(:disabled){border-color:var(--ink-soft)}
+.opts button:disabled{cursor:default;opacity:.55}
+.opts button.right{opacity:1;border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.opts button.wrong{opacity:1;border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.num{display:flex;gap:.5em;align-items:center;flex-wrap:wrap}
+.num input{font:inherit;width:6em;padding:.2em .45em;border:1px solid var(--rule);border-radius:6px;background:var(--panel);color:var(--ink)}
+.num .hint{font-size:.82em;color:var(--muted)}
+.fb{margin-top:.5em;font-size:.92em}
+.fb .ok{color:var(--good);font-weight:500} .fb .no{color:var(--bad);font-weight:500} .fb .rev{color:var(--ink-soft);font-weight:500}
+.final{background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:1em 1.2em}
+.final p{margin:.5em 0}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+
+/* matrices */
+.matbox{overflow-x:auto;margin:.45em 0;padding:.15em 0}
+.mrow{display:inline-flex;align-items:center;gap:.5em;vertical-align:middle}
+.labs{display:flex;flex-direction:column;padding:.2em 0;color:var(--muted);font-size:.85em}
+.labs span{height:calc(2.3em / .85);line-height:calc(2.3em / .85);text-align:right}
+.mat{display:inline-block;position:relative;padding:.2em .5em;vertical-align:middle}
+.mat::before,.mat::after{content:"";position:absolute;top:0;bottom:0;width:.42em;border:1.5px solid var(--ink)}
+.mat::before{left:0;border-right:0}
+.mat::after{right:0;border-left:0}
+.mat table{border-collapse:collapse}
+.mat td{height:2.3em;min-width:2.5em;padding:0 .35em;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mat td.sep{border-left:1.5px solid var(--ink-soft)}
+.mat tr.chg td{background:var(--hl)}
+.mat td.piv{box-shadow:inset 0 0 0 2px var(--accent);border-radius:4px}
+.mat td.ask{color:var(--accent);font-weight:500}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.8em;line-height:1.05}
+.fr>span:first-child{border-bottom:1px solid currentColor;padding:0 .15em}
+.eq{display:inline-flex;align-items:center;gap:.45em;flex-wrap:wrap}
+@media (max-width:900px){ main{grid-template-columns:1fr} .lp{position:static} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Matrix inverse trainer</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">To invert a square matrix <i>B</i>, write it next to the identity as [<i>B</i> | <i>I</i>] and apply row operations until the left block is <i>I</i>. The right block is then <i>B</i><sup>−1</sup>. Work one column at a time: bring a nonzero entry to the diagonal (the <i>pivot</i>), scale its row so the pivot is 1, then clear every other entry in that column. Answers may be fractions such as −3/2.</p>
+<main>
+  <section class="lp" aria-labelledby="bTitle">
+    <h2 id="bTitle">The matrix <i>B</i></h2>
+    <div id="meta" class="note"></div>
+    <div id="bmat"></div>
+    <h2 class="second">Current [<i>B</i> | <i>I</i>]</h2>
+    <div id="cur"></div>
+    <div class="controls">
+      <button class="btn" id="new">New problem</button>
+      <label>Level <select id="level">
+        <option value="2">2 × 2</option>
+        <option value="3" selected>3 × 3</option>
+        <option value="sing">3 × 3, may be singular</option>
+        <option value="run">Running example bases</option>
+      </select></label>
+      <label class="chk"><input type="checkbox" id="entries" checked> Ask for an entry of each new row</label>
+      <button class="btn" id="solve">Show worked solution</button>
+    </div>
+    <div class="score" id="score" aria-live="polite"></div>
+    <p class="note">Allowed row operations: swap two rows, multiply a row by a nonzero number, subtract a multiple of one row from another. <b>3 × 3, may be singular:</b> about one problem in three has no inverse. <b>Running example bases:</b> <i>B</i> consists of columns of the standard form of the running example, as in Simplex.</p>
+  </section>
+  <section class="steps" id="steps" aria-label="Row reduction steps" aria-live="polite"></section>
+</main>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+
+/* ---------- fractions ---------- */
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;}
+function F(n,d){if(d===undefined)d=1;if(d<0){n=-n;d=-d;}const g=gcd(n,d);n=n/g;d=d/g;return {n:n===0?0:n,d:n===0?1:d};}
+const add=(a,b)=>F(a.n*b.d+b.n*a.d,a.d*b.d), sub=(a,b)=>F(a.n*b.d-b.n*a.d,a.d*b.d),
+      mul=(a,b)=>F(a.n*b.n,a.d*b.d), div=(a,b)=>F(a.n*b.d,a.d*b.n);
+const isZ=a=>a.n===0, isOne=a=>a.n===1&&a.d===1, val=a=>a.n/a.d, neg=a=>F(-a.n,a.d);
+function fmt(a){const s=a.n<0?'−':'';if(a.d===1)return s+Math.abs(a.n);return s+'<span class="fr"><span>'+Math.abs(a.n)+'</span><span>'+a.d+'</span></span>';}
+function fmtP(a){return a.n<0?'('+fmt(a)+')':fmt(a);}
+function parseNum(str){
+  const s=str.replace(/[−–]/g,'-').replace(/\s/g,'');
+  let m=s.match(/^([+-]?\d+)\/([+-]?\d+)$/);
+  if(m){const d=parseInt(m[2],10);return d?parseInt(m[1],10)/d:NaN;}
+  if(/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s))return parseFloat(s);
+  return NaN;
+}
+
+/* ---------- notation ---------- */
+const R=i=>'<i>R</i><sub>'+(i+1)+'</sub>';
+const RUN_NAMES=['<i>x</i><sub>1</sub>','<i>x</i><sub>2</sub>','<i>s</i><sub>1</sub>','<i>s</i><sub>2</sub>','<i>s</i><sub>3</sub>'];
+const RUN_COLS=[[1,1,0],[1,0,1],[1,0,0],[0,1,0],[0,0,1]];
+const RUN_B=[4,3,3];
+
+function matHTML(rows,o){
+  o=o||{};const nr=rows.length,nc=rows[0].length,sep=o.sep;
+  let h='<div class="mrow">';
+  if(o.labels){h+='<div class="labs" aria-hidden="true">';for(let i=0;i<nr;i++)h+='<span>'+R(i)+'</span>';h+='</div>';}
+  h+='<div class="mat"><table>';
+  for(let i=0;i<nr;i++){
+    h+='<tr'+(o.chg&&o.chg.includes(i)?' class="chg"':'')+'>';
+    for(let c=0;c<nc;c++){
+      const cls=[];if(sep&&c===sep)cls.push('sep');
+      if(o.piv&&o.piv[0]===i&&o.piv[1]===c)cls.push('piv');
+      const ask=o.ask&&o.ask[0]===i&&o.ask[1]===c;if(ask)cls.push('ask');
+      h+='<td'+(cls.length?' class="'+cls.join(' ')+'"':'')+'>'+(ask?'?':fmt(rows[i][c]))+'</td>';
+    }
+    h+='</tr>';
+  }
+  return h+'</table></div></div>';
+}
+const box=h=>'<div class="matbox">'+h+'</div>';
+
+/* ---------- Gauss–Jordan (used to vet random problems) ---------- */
+function augment(Bint){const n=Bint.length;return Bint.map((r,i)=>[...r.map(v=>F(v)),...Array.from({length:n},(_,k)=>F(i===k?1:0))]);}
+function gj(Bint){
+  const n=Bint.length;const A=augment(Bint);let maxD=1,maxN=0,scales=0;
+  const track=row=>row.forEach(x=>{maxD=Math.max(maxD,x.d);maxN=Math.max(maxN,Math.abs(x.n));});
+  for(let j=0;j<n;j++){
+    if(isZ(A[j][j])){let r=-1;for(let i=j+1;i<n;i++)if(!isZ(A[i][j])){r=i;break;}
+      if(r<0)return {sing:true,maxD,maxN,scales};[A[j],A[r]]=[A[r],A[j]];}
+    const p=A[j][j];if(!isOne(p)){scales++;const t=div(F(1),p);A[j]=A[j].map(x=>mul(x,t));track(A[j]);}
+    for(let i=0;i<n;i++)if(i!==j&&!isZ(A[i][j])){const k=A[i][j];A[i]=A[i].map((x,c)=>sub(x,mul(k,A[j][c])));track(A[i]);}
+  }
+  return {sing:false,maxD,maxN,scales};
+}
+
+/* ---------- random problems ---------- */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function nz(lo,hi){let v=0;while(!v)v=rnd(lo,hi);return v;}
+function noZeroLines(A){const n=A.length;for(let i=0;i<n;i++){if(A[i].every(v=>!v))return false;if(A.every(r=>!r[i]))return false;}return true;}
+function genInvertible(n){
+  for(let tries=0;tries<5000;tries++){
+    const A=Array.from({length:n},()=>Array.from({length:n},()=>n===2?(Math.random()<0.85?nz(-4,5):0):(Math.random()<0.75?nz(-3,4):0)));
+    if(n===3&&Math.random()<0.3)A[0][0]=0;
+    if(!noZeroLines(A))continue;
+    const g=gj(A);
+    if(g.sing||g.scales<1||g.maxD>(n===2?8:12)||g.maxN>30)continue;
+    return A;
+  }
+  return n===2?[[2,1],[5,3]]:[[2,1,0],[1,1,1],[0,1,2]];
+}
+function genSingular(){
+  for(let tries=0;tries<5000;tries++){
+    const r1=[0,0,0].map(()=>Math.random()<0.8?nz(-3,4):0),r2=[0,0,0].map(()=>Math.random()<0.8?nz(-3,4):0);
+    const a=pick([-2,-1,1,2]),b=pick([-1,1,2]);
+    const r3=r1.map((v,k)=>a*v+b*r2[k]);
+    if(r3.some(v=>Math.abs(v)>8))continue;
+    let A=shuffle([r1,r2,r3]);
+    if(Math.random()<0.5)A=A[0].map((_,c)=>A.map(r=>r[c]));
+    if(!noZeroLines(A))continue;
+    const g=gj(A);
+    if(!g.sing||g.maxD>12||g.maxN>30)continue;
+    return A;
+  }
+  return [[1,2,3],[2,1,1],[3,3,4]];
+}
+function generate(level){
+  if(level==='2')return {B:genInvertible(2),meta:null};
+  if(level==='3')return {B:genInvertible(3),meta:null};
+  if(level==='sing')return Math.random()<0.35?{B:genSingular(),meta:null}:{B:genInvertible(3),meta:null};
+  const bases=[];
+  for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)for(let k=j+1;k<5;k++){
+    if(i===2&&j===3&&k===4)continue;
+    const B=[0,1,2].map(r=>[RUN_COLS[i][r],RUN_COLS[j][r],RUN_COLS[k][r]]);
+    if(!gj(B).sing)bases.push({B,meta:{basis:[i,j,k]}});
+  }
+  return pick(bases);
+}
+
+/* ---------- state ---------- */
+let B,meta,n,M,col,asked,pending,readDone,singularAt,current,allSteps,askEntries;
+
+function settle(){
+  while(col<n&&isOne(M[col][col])&&M.every((r,i)=>i===col||isZ(r[col])))col++;
+}
+function relationHTML(j){
+  // column j of B as a combination of columns 0..j-1 (valid because those are unit vectors in the reduced left block)
+  let s='';
+  for(let i=0;i<j;i++){const c=M[i][j];if(isZ(c))continue;
+    const a=F(Math.abs(c.n),c.d),co=isOne(a)?'':fmt(a)+' · ';
+    s+=(s?(c.n<0?' − ':' + '):(c.n<0?'−':''))+co+'column '+(i+1);}
+  return 'column '+(j+1)+' of <i>B</i> = '+(s||'0');
+}
+
+/* ---------- steps ---------- */
+function zeroStep(cand){
+  const j=col;
+  return {tag:'Column '+(j+1)+': pivot',kind:'choice',
+    q:'The pivot position in column '+(j+1)+' (row '+(j+1)+') holds 0, so you cannot scale it to 1. What do you do?',
+    opts:['Swap '+R(j)+' with a lower row that has a nonzero entry in column '+(j+1),'Stop: <i>B</i> is not invertible','Skip column '+(j+1)+' and move on'],
+    ans:cand.length?0:1,
+    commit(k){
+      asked[j]=true;
+      if(cand.length){
+        let why='Row'+(cand.length>1?'s ':' ')+cand.map(i=>i+1).join(' and ')+' below '+(cand.length>1?'have':'has')+' a nonzero entry in column '+(j+1)+', so a swap brings a nonzero number to the pivot position. A zero pivot on its own does not make <i>B</i> singular.';
+        if(k===2)why+=' Skipping is not an option: column '+(j+1)+' of the left block must end up as a unit vector.';
+        return {why};
+      }
+      singularAt=j;
+      const above=j>0?' In the left block, columns 1 to '+j+' are already unit vectors, so column '+(j+1)+' is a combination of them. Row operations do not change linear relations between columns, so the same relation holds in <i>B</i>: '+relationHTML(j)+'.':'';
+      return {why:(j<n-1?'Every entry of column '+(j+1)+' from row '+(j+1)+' down is 0, so no swap can produce a pivot.':'This is the last row, so there is no row left to swap with.')+above+' The columns of <i>B</i> are linearly dependent, so <i>B</i> has no inverse.'};
+    }};
+}
+function swapStep(cand){
+  const j=col,rows=[];for(let i=j+1;i<n;i++)rows.push(i);
+  return {tag:'Column '+(j+1)+': swap',kind:'choice',
+    q:'Which swap brings a nonzero entry to the pivot position in column '+(j+1)+'?',
+    opts:rows.map(i=>'Swap '+R(j)+' and '+R(i)),
+    isRight:k=>!isZ(M[rows[k]][j]),
+    firstRight:()=>rows.indexOf(cand[0]),
+    commit(k){
+      const r=this.isRight(k)?rows[k]:cand[0];
+      [M[j],M[r]]=[M[r],M[j]];
+      return {why:R(j)+' ↔ '+R(r)+'. The pivot in column '+(j+1)+' is now '+fmt(M[j][j])+'. A swap changes neither block’s content, only the order of the rows.',matrix:true,chg:[j,r]};
+    }};
+}
+function entryStep(r,c,ans,calc){
+  const where=c<n?'column '+(c+1)+' of the left block':'column '+(c-n+1)+' of the right block';
+  return {tag:'New entry',kind:'num',
+    q:'After this operation, what is the entry marked ? in '+R(r)+' ('+where+')?'+box(matHTML(M,{sep:n,labels:true,ask:[r,c],chg:[r]})),
+    ans:val(ans),ansHTML:fmt(ans),
+    commit(){return {why:calc+'.',matrix:true,chg:[r]};}};
+}
+function maybeEntry(r,cands,make){
+  if(!askEntries||!cands.length)return;
+  const c=pick(cands);const m=make(c);pending=entryStep(r,c,m.ans,m.calc);
+}
+function scaleStep(){
+  const j=col,p=M[j][j],t=div(F(1),p);
+  return {tag:'Column '+(j+1)+': scale',kind:'num',
+    q:'The pivot in column '+(j+1)+' is '+fmt(p)+'. Scale its row so the pivot becomes 1: '+R(j)+' ← <i>t</i> · '+R(j)+'. What is <i>t</i>?',
+    ans:val(t),ansHTML:fmt(t),
+    tip:v=>Math.abs(v-val(p))<1e-9&&!isOne(p)?'That is the pivot itself. You need its reciprocal. ':'',
+    commit(){
+      const old=M[j].slice();M[j]=old.map(x=>mul(x,t));
+      const cands=[];for(let c=0;c<2*n;c++)if(c!==j&&!isZ(old[c]))cands.push(c);
+      maybeEntry(j,cands,c=>({ans:M[j][c],calc:fmtP(t)+' × '+fmtP(old[c])+' = '+fmt(M[j][c])}));
+      return {why:'<i>t</i> = 1 / '+fmtP(p)+' = '+fmt(t)+', so the operation is '+R(j)+' ← '+fmtP(t)+' '+R(j)+'. Every entry of the row, in both blocks, is multiplied by '+fmt(t)+'.'+(pending?' Now compute one entry of the new row.':''),matrix:true,chg:[j]};
+    }};
+}
+function elimStep(i){
+  const j=col,k=M[i][j],a=F(Math.abs(k.n),k.d),co=isOne(a)?'':fmt(a)+' ';
+  const natural=R(i)+' ← '+R(i)+(k.n>0?' − ':' + ')+co+R(j);
+  return {tag:'Column '+(j+1)+': clear row '+(i+1),kind:'num',
+    q:'Clear the entry '+fmt(k)+' in row '+(i+1)+' of column '+(j+1)+' using the pivot row: '+R(i)+' ← '+R(i)+' − <i>k</i> · '+R(j)+'. What is <i>k</i>?',
+    ans:val(k),ansHTML:fmt(k),
+    tip:v=>Math.abs(v+val(k))<1e-9?'Check the sign. The pivot is 1, so subtracting <i>k</i> times it cancels the entry exactly when <i>k</i> equals the entry. ':'',
+    commit(){
+      const old=M[i].slice();M[i]=old.map((x,c)=>sub(x,mul(k,M[j][c])));
+      const cands=[];for(let c=0;c<2*n;c++)if(c!==j&&!isZ(M[j][c]))cands.push(c);
+      maybeEntry(i,cands,c=>({ans:M[i][c],calc:fmt(old[c])+' − '+fmtP(k)+' × '+fmtP(M[j][c])+' = '+fmt(M[i][c])}));
+      return {why:'<i>k</i> = '+fmt(k)+', because '+fmt(k)+' − <i>k</i> · 1 = 0. The operation is '+natural+'.'+(pending?' Now compute one entry of the new row.':''),matrix:true,chg:[i]};
+    }};
+}
+function readStep(){
+  return {tag:'Read off',kind:'choice',
+    q:'The left block is now the identity. Where is <i>B</i><sup>−1</sup>?',
+    opts:['In the right block','It is the transpose of the right block','It is still the left block'],ans:0,
+    commit(){readDone=true;
+      return {why:'Each row operation is multiplication on the left by an invertible matrix <i>E</i>. If <i>E</i><sub><i>k</i></sub> ⋯ <i>E</i><sub>1</sub><i>B</i> = <i>I</i>, then <i>E</i><sub><i>k</i></sub> ⋯ <i>E</i><sub>1</sub> = <i>B</i><sup>−1</sup>. The same operations turned the right block <i>I</i> into <i>E</i><sub><i>k</i></sub> ⋯ <i>E</i><sub>1</sub><i>I</i> = <i>B</i><sup>−1</sup>.'};}};
+}
+function plan(){
+  if(pending){const p=pending;pending=null;return p;}
+  if(singularAt>=0)return null;
+  settle();
+  if(col<n){
+    const p=M[col][col];
+    if(isZ(p)){
+      const cand=[];for(let i=col+1;i<n;i++)if(!isZ(M[i][col]))cand.push(i);
+      return asked[col]?swapStep(cand):zeroStep(cand);
+    }
+    if(!isOne(p))return scaleStep();
+    for(let i=0;i<n;i++)if(i!==col&&!isZ(M[i][col]))return elimStep(i);
+  }
+  if(!readDone)return readStep();
+  return null;
+}
+
+/* ---------- rendering ---------- */
+function renderPanel(){
+  $('bmat').innerHTML=box(matHTML(B.map(r=>r.map(v=>F(v)))));
+  $('cur').innerHTML=box(matHTML(M,{sep:n,labels:true,piv:singularAt<0&&col<n?[col,col]:null}));
+  $('meta').innerHTML=meta?'Basis {'+meta.basis.map(i=>RUN_NAMES[i]).join(', ')+'} of the running example, so <i>B</i> = [<i>A</i><sub>'+meta.basis.map(i=>RUN_NAMES[i]).join('</sub> <i>A</i><sub>')+'</sub>].':'';
+}
+function renderIntro(){
+  const d=document.createElement('div');d.className='card';
+  d.innerHTML='<div class="tag">Start</div><div class="q">Write <i>B</i> next to the identity matrix:</div>'+box(matHTML(M,{sep:n,labels:true,piv:[0,0]}))+
+    '<div class="note">The outlined cell is the current pivot position. Shaded rows have just changed.</div>';
+  $('steps').appendChild(d);
+}
+function renderFinal(){
+  const d=document.createElement('div');d.className='final';
+  if(singularAt>=0){
+    d.innerHTML='<h2 style="margin-top:0">No inverse</h2><p><i>B</i> is singular: '+relationHTML(singularAt)+'. Equivalently, det <i>B</i> = 0.</p>'+
+      '<p>The method finds this by itself. If at some column no row from the pivot position down has a nonzero entry, stop: no sequence of row operations can turn the left block into <i>I</i>.</p>';
+  }else{
+    const inv=M.map(r=>r.slice(n));
+    let ok=true;for(let i=0;i<n;i++)for(let k=0;k<n;k++){let s=F(0);for(let t=0;t<n;t++)s=add(s,mul(F(B[i][t]),inv[t][k]));if(!(i===k?isOne(s):isZ(s)))ok=false;}
+    let h='<h2 style="margin-top:0">The inverse</h2><div class="eq"><span><i>B</i><sup>−1</sup> =</span>'+box(matHTML(inv))+'</div>'+
+      '<p>'+(ok?'Check: multiplying <i>B</i> by this matrix gives <i>I</i>. Try one row times one column yourself.':'Something went wrong: <i>B</i> times this matrix is not <i>I</i>.')+'</p>';
+    if(meta){
+      const xB=inv.map(r=>r.reduce((s,v,t)=>add(s,mul(v,F(RUN_B[t]))),F(0)));
+      const x=[F(0),F(0)];meta.basis.forEach((v,i)=>{if(v<2)x[v]=xB[i];});
+      const feas=xB.every(v=>v.n>=0);
+      h+='<p>In Simplex this gives the basic variables <i>x</i><sub><i>B</i></sub> = <i>B</i><sup>−1</sup><i>b</i> with <i>b</i> = (4, 3, 3): '+
+        meta.basis.map((v,i)=>RUN_NAMES[v]+' = '+fmt(xB[i])).join(', ')+'. '+
+        (feas?'All are nonnegative, so this basis gives a basic feasible solution, the corner (<i>x</i><sub>1</sub>, <i>x</i><sub>2</sub>) = ('+fmt(x[0])+', '+fmt(x[1])+').':
+              'A basic variable is negative, so the basic solution (<i>x</i><sub>1</sub>, <i>x</i><sub>2</sub>) = ('+fmt(x[0])+', '+fmt(x[1])+') is not feasible.')+'</p>'+
+        '<p class="note">The same <i>B</i><sup>−1</sup> gives the vectors <i>u</i> = <i>B</i><sup>−1</sup><i>A</i><sub><i>j</i></sub> and the reduced costs.</p>';
+    }
+    d.innerHTML=h;
+  }
+  $('steps').appendChild(d);
+}
+function renderNext(){
+  const s=plan();current=s;
+  if(!s){renderPanel();renderFinal();updateScore();return;}
+  allSteps.push(s);
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML='<div class="tag">'+s.tag+'</div><div class="q">'+s.q+'</div>';
+  const fb=document.createElement('div');fb.className='fb';
+  const finish=(ok,shown,k,v)=>{
+    s.done=true;s.ok=ok;s.shown=shown;card.classList.add(ok?'done-good':shown?'done-shown':'done-bad');
+    const res=s.commit(k);settle();
+    let h=(ok?'<span class="ok">Correct.</span> ':shown?'<span class="rev">Answer:</span> ':'<span class="no">Not quite.</span> ');
+    if(s.kind==='num'&&!ok)h+='The answer is <b>'+s.ansHTML+'</b>. ';
+    if(!ok&&!shown&&s.tip)h+=s.tip(v);
+    h+=res.why;
+    if(res.matrix&&!pending)h+=box(matHTML(M,{sep:n,labels:true,chg:res.chg,piv:col<n?[col,col]:null}));
+    fb.innerHTML=h;
+    if(!pending)renderPanel();
+    updateScore();renderNext();
+  };
+  if(s.kind==='num'){
+    const w=document.createElement('div');w.className='num';
+    const inp=document.createElement('input');inp.type='text';inp.setAttribute('aria-label',s.tag);inp.autocomplete='off';
+    const go=document.createElement('button');go.className='btn';go.textContent='Check';
+    const hint=document.createElement('span');hint.className='hint';hint.textContent='e.g. 3, −2, 1/2';
+    const check=()=>{if(s.done)return;const v=parseNum(inp.value);if(!Number.isFinite(v)){hint.textContent='Enter a number or a fraction such as −3/2';inp.focus();return;}
+      inp.disabled=true;go.disabled=true;finish(Math.abs(v-s.ans)<1e-9,false,null,v);};
+    go.onclick=check;inp.addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+    w.append(inp,go,hint);card.appendChild(w);
+    s.reveal=()=>{inp.value=s.ansHTML.replace(/<[^>]+>/g,m=>m==='</span><span>'?'/':'').replace('−','-');inp.disabled=true;go.disabled=true;finish(false,true,null,null);};
+    setTimeout(()=>inp.focus({preventScroll:true}),0);
+  }else{
+    const o=document.createElement('div');o.className='opts';
+    const right=idx=>s.isRight?s.isRight(idx):idx===s.ans;
+    const firstRight=()=>s.firstRight?s.firstRight():s.ans;
+    const btns=s.opts.map((t,idx)=>{const b=document.createElement('button');b.innerHTML=t;
+      b.onclick=()=>{if(s.done)return;btns.forEach(x=>x.disabled=true);
+        if(right(idx))b.classList.add('right');else{b.classList.add('wrong');btns[firstRight()].classList.add('right');}
+        finish(right(idx),false,idx);};
+      o.appendChild(b);return b;});
+    card.appendChild(o);
+    s.reveal=()=>{btns.forEach(x=>x.disabled=true);const k=firstRight();btns[k].classList.add('right');finish(false,true,k);};
+  }
+  card.appendChild(fb);$('steps').appendChild(card);
+  if(allSteps.length>1)card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});
+}
+function updateScore(){
+  const tried=allSteps.filter(s=>s.done&&!s.shown),ok=tried.filter(s=>s.ok),all=!current;
+  $('score').textContent=(tried.length?`${ok.length} of ${tried.length} answered correctly first time`:'')+(all?(tried.length?'. ':'')+(singularAt>=0?'Done: B has no inverse.':'Inverse complete.'):'');
+}
+function start(){
+  const g=generate($('level').value);B=g.B;meta=g.meta;n=B.length;
+  M=augment(B);col=0;asked={};pending=null;readDone=false;singularAt=-1;current=null;allSteps=[];
+  askEntries=$('entries').checked;
+  $('steps').innerHTML='';renderPanel();renderIntro();renderNext();updateScore();
+}
+$('new').onclick=start;$('level').onchange=start;
+$('entries').onchange=()=>{askEntries=$('entries').checked;};
+$('solve').onclick=()=>{let guard=0;while(current&&!current.done&&guard++<200)current.reveal();};
+window.__mit={generate,gj,state:()=>({B,M,singularAt,current})};
+start();
+})();
+</script>
+</body>
+</html>
