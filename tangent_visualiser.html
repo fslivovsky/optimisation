@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Derivatives, gradients and tangents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --curve:#2F6F9F; --tangent:#2E7D4F; --secant:#C9781E; --grad:#A8325E; --grid:#E3E7E6; --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+  --plane:rgba(46,125,79,.28); --surf:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --curve:#6FB0E0; --tangent:#5CC98A; --secant:#E3A63A; --grad:#E27AA6; --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+    --plane:rgba(92,201,138,.25); --surf:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --curve:#6FB0E0; --tangent:#5CC98A; --secant:#E3A63A; --grad:#E27AA6; --grid:#1F252D; --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  --plane:rgba(92,201,138,.25); --surf:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .2em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.tabs{display:flex;gap:.4em;padding:.4em clamp(18px,4vw,60px) .6em}
+.tabs button{font:inherit;color:var(--ink-soft);background:none;border:0;border-bottom:2px solid transparent;padding:.2em .2em;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--secant)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+main{padding:0 clamp(18px,4vw,60px) 30px}
+.pane{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,.8fr);gap:clamp(14px,2.5vw,36px);align-items:start}
+.pane[hidden]{display:none}
+.pane2{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(240px,.7fr)}
+svg.board,canvas.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none}
+canvas.board{cursor:grab}
+.side{display:flex;flex-direction:column;gap:.7em;font-size:.95em}
+.side label{color:var(--ink-soft)}
+select,input[type=range]{font:inherit}
+select{color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.15em .5em}
+input[type=range]{width:100%;accent-color:var(--secant)}
+.readout{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.6em .8em;font-variant-numeric:tabular-nums;line-height:1.6}
+.k{color:var(--muted)}
+.note{color:var(--muted);font-size:.85em}
+.cap{color:var(--muted);font-size:.85em;text-align:center;margin:.3em 0 0}
+i{font-style:italic}
+.chk{display:flex;gap:.4em;align-items:center;cursor:pointer}
+@media (max-width:980px){ .pane,.pane2{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Derivatives, gradients and tangents</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<div class="tabs" role="tablist">
+  <button role="tab" id="t1" aria-selected="true" aria-controls="p1">One variable: the tangent line</button>
+  <button role="tab" id="t2" aria-selected="false" aria-controls="p2">Two variables: the tangent plane</button>
+</div>
+<main>
+<section class="pane" id="p1" role="tabpanel" aria-labelledby="t1">
+  <div>
+    <svg id="b1" class="board" viewBox="0 0 600 420" role="img" aria-label="Graph of a function with the tangent line at a chosen point"></svg>
+    <p class="cap">Drag the point along the curve. The green line is the tangent, with slope <i>f</i>′(<i>x</i>).</p>
+  </div>
+  <div class="side">
+    <label>Function <select id="f1">
+      <option value="sq">f(x) = x²</option>
+      <option value="exp">f(x) = eˣ</option>
+      <option value="quart">f(x) = x⁴ / 4 − x²  (not convex)</option>
+      <option value="sin">f(x) = sin x  (not convex)</option>
+    </select></label>
+    <label class="chk"><input type="checkbox" id="sec"> Show a secant with step <i>h</i></label>
+    <label id="hwrap" hidden><span>h = <b id="hval">1.00</b></span><input type="range" id="h" min="0.02" max="2" step="0.01" value="1"></label>
+    <div class="readout" id="r1" aria-live="polite"></div>
+    <p class="note">For a convex function the tangent lies below the whole graph. Switch to a function that is not convex and look for points where the tangent cuts the graph. With the secant switched on, shrink <i>h</i> and watch the secant turn into the tangent.</p>
+  </div>
+</section>
+
+<section class="pane pane2" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+  <div>
+    <svg id="b2" class="board" viewBox="0 0 420 420" role="img" aria-label="Level curves of a function of two variables with the gradient at a chosen point"></svg>
+    <p class="cap">Level curves. Drag the point. Red: ∇<i>f</i>, green: −∇<i>f</i>.</p>
+  </div>
+  <div>
+    <canvas id="c2" class="board" width="840" height="840" role="img" aria-label="Graph of the function as a surface with the tangent plane at the chosen point"></canvas>
+    <p class="cap">The graph with its tangent plane. Drag to rotate.</p>
+  </div>
+  <div class="side">
+    <label>Function <select id="f2">
+      <option value="bowl">f(x) = x₁² + 2x₂²</option>
+      <option value="tilt">f(x) = x₁² + 2x₂² − x₁x₂</option>
+      <option value="saddle">f(x) = x₁² − x₂²  (not convex)</option>
+    </select></label>
+    <div class="readout" id="r2" aria-live="polite"></div>
+    <p class="note">The tangent plane is <i>f</i>(<i>x</i>) + ∇<i>f</i>(<i>x</i>)<sup>T</sup>(<i>y</i> − <i>x</i>). For a convex function it lies below the whole graph. The gradient is perpendicular to the level curve through the point.</p>
+  </div>
+</section>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';draw2();};
+[$('t1'),$('t2')].forEach((b,i)=>b.onclick=()=>{$('t1').setAttribute('aria-selected',i===0);$('t2').setAttribute('aria-selected',i===1);$('p1').hidden=i!==0;$('p2').hidden=i!==1;if(i===1)draw2();});
+const NS='http://www.w3.org/2000/svg';
+function el(p,t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;}
+const fmt=v=>(Math.abs(v)<5e-4?0:v).toFixed(2).replace('-','−');
+
+/* ---------- one variable ---------- */
+const F1={sq:{f:x=>x*x,d:x=>2*x,xr:[-2.5,2.5],yr:[-1,6]},exp:{f:Math.exp,d:Math.exp,xr:[-2.5,2],yr:[-1,7]},
+  quart:{f:x=>x**4/4-x*x,d:x=>x**3-2*x,xr:[-2.6,2.6],yr:[-1.6,2.4]},sin:{f:Math.sin,d:Math.cos,xr:[-4,4],yr:[-1.6,1.6]}};
+let g1='sq',x0=0.8;
+const b1=$('b1'),W1=600,H1=420;
+function draw1(){const F=F1[g1];const sx=x=>(x-F.xr[0])/(F.xr[1]-F.xr[0])*W1,sy=y=>H1-(y-F.yr[0])/(F.yr[1]-F.yr[0])*H1;
+  b1.innerHTML='';
+  el(b1,'line',{x1:0,y1:sy(0),x2:W1,y2:sy(0),stroke:'var(--axis)'});el(b1,'line',{x1:sx(0),y1:0,x2:sx(0),y2:H1,stroke:'var(--axis)'});
+  let d='';for(let i=0;i<=300;i++){const x=F.xr[0]+(F.xr[1]-F.xr[0])*i/300;d+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(F.f(x)).toFixed(1);}
+  el(b1,'path',{d,fill:'none',stroke:'var(--curve)','stroke-width':2.5});
+  const m=F.d(x0),y0=F.f(x0);
+  el(b1,'line',{x1:sx(F.xr[0]),y1:sy(y0+m*(F.xr[0]-x0)),x2:sx(F.xr[1]),y2:sy(y0+m*(F.xr[1]-x0)),stroke:'var(--tangent)','stroke-width':2});
+  let secTxt='';
+  if($('sec').checked){const h=+$('h').value,y1=F.f(x0+h),ms=(y1-y0)/h;
+    el(b1,'line',{x1:sx(F.xr[0]),y1:sy(y0+ms*(F.xr[0]-x0)),x2:sx(F.xr[1]),y2:sy(y0+ms*(F.xr[1]-x0)),stroke:'var(--secant)','stroke-width':2,'stroke-dasharray':'6 4'});
+    el(b1,'circle',{cx:sx(x0+h),cy:sy(y1),r:5,fill:'var(--secant)'});
+    secTxt='<br><span class="k">secant slope</span> ['+'<i>f</i>(<i>x</i> + <i>h</i>) − <i>f</i>(<i>x</i>)] / <i>h</i> = '+fmt(ms);}
+  const pt=el(b1,'circle',{cx:sx(x0),cy:sy(y0),r:8,fill:'var(--ink)',tabindex:0,role:'slider','aria-label':'Point on the curve','aria-valuenow':x0.toFixed(2)});pt.style.cursor='grab';
+  pt.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){x0=Math.min(F.xr[1]-0.05,Math.max(F.xr[0]+0.05,x0+(e.key==='ArrowRight'?0.05:-0.05)));draw1();b1.querySelector('[role=slider]').focus();e.preventDefault();}});
+  $('r1').innerHTML='<span class="k">x</span> = '+fmt(x0)+'<br><span class="k">f(x)</span> = '+fmt(y0)+'<br><span class="k">f′(x)</span> = '+fmt(m)+secTxt;
+}
+function svgX(svg,e,W){const r=svg.getBoundingClientRect();return (e.clientX-r.left)/r.width*W;}
+let drag1=false;
+b1.addEventListener('pointerdown',e=>{drag1=true;b1.setPointerCapture(e.pointerId);move1(e);});
+b1.addEventListener('pointermove',e=>{if(drag1)move1(e);});
+b1.addEventListener('pointerup',()=>drag1=false);
+function move1(e){const F=F1[g1];x0=F.xr[0]+svgX(b1,e,W1)/W1*(F.xr[1]-F.xr[0]);x0=Math.min(F.xr[1]-0.05,Math.max(F.xr[0]+0.05,x0));draw1();}
+$('f1').onchange=e=>{g1=e.target.value;x0=g1==='sin'?1:0.8;draw1();};
+$('sec').onchange=()=>{$('hwrap').hidden=!$('sec').checked;draw1();};
+$('h').oninput=()=>{$('hval').textContent=(+$('h').value).toFixed(2);draw1();};
+
+/* ---------- two variables ---------- */
+const F2={bowl:{f:(a,b)=>a*a+2*b*b,g:(a,b)=>[2*a,4*b],H:'[[2, 0], [0, 4]]'},
+  tilt:{f:(a,b)=>a*a+2*b*b-a*b,g:(a,b)=>[2*a-b,4*b-a],H:'[[2, −1], [−1, 4]]'},
+  saddle:{f:(a,b)=>a*a-b*b,g:(a,b)=>[2*a,-2*b],H:'[[2, 0], [0, −2]]'}};
+let g2='bowl',p=[0.9,0.6],az=-0.9,elv=0.55;const R=2;
+const b2=$('b2'),W2=420;const cv=$('c2'),ctx=cv.getContext('2d');
+function contourSegs(f,level,n){const segs=[],h=2*R/n;const v=(i,j)=>f(-R+i*h,-R+j*h)-level;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const c=[v(i,j),v(i+1,j),v(i+1,j+1),v(i,j+1)];const P=[[i,j],[i+1,j],[i+1,j+1],[i,j+1]];const pts=[];
+    for(let k=0;k<4;k++){const a=c[k],b=c[(k+1)%4];if((a<0)!==(b<0)){const t=a/(a-b);pts.push([-R+(P[k][0]+t*(P[(k+1)%4][0]-P[k][0]))*h,-R+(P[k][1]+t*(P[(k+1)%4][1]-P[k][1]))*h]);}}
+    if(pts.length===2)segs.push(pts);else if(pts.length===4){segs.push([pts[0],pts[1]]);segs.push([pts[2],pts[3]]);}}
+  return segs;}
+function draw2(){const F=F2[g2];const sx=x=>(x+R)/(2*R)*W2,sy=y=>W2-(y+R)/(2*R)*W2;b2.innerHTML='';
+  el(b2,'line',{x1:0,y1:sy(0),x2:W2,y2:sy(0),stroke:'var(--axis)'});el(b2,'line',{x1:sx(0),y1:0,x2:sx(0),y2:W2,stroke:'var(--axis)'});
+  const levels=g2==='saddle'?[-3,-2,-1,-0.4,0.4,1,2,3]:[0.25,0.75,1.5,2.5,4,6];
+  levels.forEach(L=>contourSegs(F.f,L,60).forEach(s=>el(b2,'line',{x1:sx(s[0][0]),y1:sy(s[0][1]),x2:sx(s[1][0]),y2:sy(s[1][1]),stroke:'var(--curve)','stroke-width':1,opacity:.55})));
+  const fp=F.f(p[0],p[1]);contourSegs(F.f,fp,80).forEach(s=>el(b2,'line',{x1:sx(s[0][0]),y1:sy(s[0][1]),x2:sx(s[1][0]),y2:sy(s[1][1]),stroke:'var(--ink)','stroke-width':1.6}));
+  const g=F.g(p[0],p[1]),n=Math.hypot(g[0],g[1]);
+  const mk=(id,col)=>{const m=el(el(b2,'defs',{}),'marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});el(m,'path',{d:'M0 0L10 5L0 10z',fill:col});};
+  mk('ag','var(--grad)');mk('at','var(--tangent)');
+  if(n>1e-6){const L=0.8;el(b2,'line',{x1:sx(p[0]),y1:sy(p[1]),x2:sx(p[0]+L*g[0]/n),y2:sy(p[1]+L*g[1]/n),stroke:'var(--grad)','stroke-width':2.5,'marker-end':'url(#ag)'});
+    el(b2,'line',{x1:sx(p[0]),y1:sy(p[1]),x2:sx(p[0]-L*g[0]/n),y2:sy(p[1]-L*g[1]/n),stroke:'var(--tangent)','stroke-width':2.5,'marker-end':'url(#at)'});}
+  const pt=el(b2,'circle',{cx:sx(p[0]),cy:sy(p[1]),r:8,fill:'var(--ink)',tabindex:0,role:'button','aria-label':'Point, move with arrow keys'});pt.style.cursor='grab';
+  pt.addEventListener('keydown',e=>{const d={ArrowLeft:[-.05,0],ArrowRight:[.05,0],ArrowUp:[0,.05],ArrowDown:[0,-.05]}[e.key];if(d){p=[Math.max(-R+.05,Math.min(R-.05,p[0]+d[0])),Math.max(-R+.05,Math.min(R-.05,p[1]+d[1]))];draw2();b2.querySelector('[role=button]').focus();e.preventDefault();}});
+  $('r2').innerHTML='<span class="k">x</span> = ('+fmt(p[0])+', '+fmt(p[1])+')<br><span class="k">f(x)</span> = '+fmt(fp)+'<br><span class="k">∇f(x)</span> = ('+fmt(g[0])+', '+fmt(g[1])+')<br><span class="k">Hessian</span> '+F.H;
+  draw3d();}
+function draw3d(){const F=F2[g2];const Wc=cv.width;ctx.clearRect(0,0,Wc,Wc);
+  const fv=g2==='saddle'?[-4,4]:[0,12];const zs=1.15/(fv[1]-fv[0]);
+  const proj=(x,y,z)=>{const zz=(z-(fv[0]+fv[1])/2)*zs*R;const c=Math.cos(az),s=Math.sin(az);const X=c*x-s*y,Y=s*x+c*y;const ce=Math.cos(elv),se=Math.sin(elv);
+    const sc=Wc/(2.2*R*1.55);return [Wc/2+X*sc,Wc/2-(zz*ce-Y*se)*sc*1.0];};
+  const clamp=z=>Math.max(fv[0]-1,Math.min(fv[1]+1,z));
+  ctx.lineWidth=1.2;ctx.strokeStyle=css('--surf');ctx.globalAlpha=.55;const N=20;
+  for(let i=0;i<=N;i++){ctx.beginPath();for(let j=0;j<=40;j++){const x=-R+2*R*i/N,y=-R+2*R*j/40;const q=proj(x,y,clamp(F.f(x,y)));j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}ctx.stroke();
+    ctx.beginPath();for(let j=0;j<=40;j++){const y=-R+2*R*i/N,x=-R+2*R*j/40;const q=proj(x,y,clamp(F.f(x,y)));j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}ctx.stroke();}
+  ctx.globalAlpha=1;
+  const g=F.g(p[0],p[1]),f0=F.f(p[0],p[1]);const tp=(x,y)=>f0+g[0]*(x-p[0])+g[1]*(y-p[1]);const s=0.9;
+  const corners=[[-s,-s],[s,-s],[s,s],[-s,s]].map(([a,b])=>proj(p[0]+a,p[1]+b,tp(p[0]+a,p[1]+b)));
+  ctx.beginPath();corners.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=css('--plane');ctx.fill();ctx.strokeStyle=css('--tangent');ctx.lineWidth=2;ctx.stroke();
+  const q=proj(p[0],p[1],f0);ctx.beginPath();ctx.arc(q[0],q[1],9,0,2*Math.PI);ctx.fillStyle=css('--ink');ctx.fill();}
+let drag2=false;
+b2.addEventListener('pointerdown',e=>{drag2=true;b2.setPointerCapture(e.pointerId);move2(e);});
+b2.addEventListener('pointermove',e=>{if(drag2)move2(e);});b2.addEventListener('pointerup',()=>drag2=false);
+function move2(e){const r=b2.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*2*R-R,y=R-(e.clientY-r.top)/r.height*2*R;p=[Math.max(-R+.05,Math.min(R-.05,x)),Math.max(-R+.05,Math.min(R-.05,y))];draw2();}
+let rot=null;
+cv.addEventListener('pointerdown',e=>{rot=[e.clientX,e.clientY,az,elv];cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';});
+cv.addEventListener('pointermove',e=>{if(!rot)return;az=rot[2]+(e.clientX-rot[0])*0.01;elv=Math.max(0.05,Math.min(1.45,rot[3]+(e.clientY-rot[1])*0.01));draw3d();});
+cv.addEventListener('pointerup',()=>{rot=null;cv.style.cursor='grab';});
+$('f2').onchange=e=>{g2=e.target.value;draw2();};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw2);
+draw1();
+})();
+</script>
+</body>
+</html>

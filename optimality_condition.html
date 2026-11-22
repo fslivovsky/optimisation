@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The first-order optimality condition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F3; --ink:#1B2430; --ink-soft:#4A5361; --muted:#8A929E; --rule:#CFD5D9;
+  --set:rgba(47,111,159,.18); --setline:#2F6F9F; --level:#C9781E; --grad:#A8325E; --dir:#2E7D4F; --bad:#A8325E; --good:#2E7D4F;
+  --axis:#B7BEC5; --panel:#FFFFFF; --focus:#2F6F9F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+    --set:rgba(111,176,224,.2); --setline:#6FB0E0; --level:#E3A63A; --grad:#E27AA6; --dir:#5CC98A; --bad:#E27AA6; --good:#5CC98A;
+    --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#15191F; --ink:#E8ECEF; --ink-soft:#B4BCC6; --muted:#7D8792; --rule:#2C333C;
+  --set:rgba(111,176,224,.2); --setline:#6FB0E0; --level:#E3A63A; --grad:#E27AA6; --dir:#5CC98A; --bad:#E27AA6; --good:#5CC98A;
+  --axis:#3B434D; --panel:#1B2027; --focus:#6FB0E0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,"Times New Roman",serif;font-size:clamp(17px,1.4vw,21px);line-height:1.45}
+*,*::before,*::after{box-sizing:inherit}
+header{display:flex;align-items:baseline;gap:1em;padding:clamp(14px,2.5vh,28px) clamp(18px,4vw,60px) .2em}
+h1{font-weight:500;font-size:1.8em;margin:0;letter-spacing:-.01em}
+.spacer{flex:1}
+.theme{font:inherit;font-size:.8em;background:none;border:0;color:var(--muted);cursor:pointer}
+.defn{padding:0 clamp(18px,4vw,60px);color:var(--ink-soft);margin:.2em 0 .8em;max-width:62em}
+main{padding:0 clamp(18px,4vw,60px) 30px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.8fr);gap:clamp(14px,2.5vw,36px);align-items:start}
+svg.board{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--rule);border-radius:6px;touch-action:none}
+.side{display:flex;flex-direction:column;gap:.8em;font-size:.95em}
+.status{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.7em .9em;line-height:1.55}
+.ok{color:var(--good);font-weight:500} .no{color:var(--bad);font-weight:500}
+.btn{font:inherit;font-size:.9em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.25em .8em;cursor:pointer;align-self:flex-start}
+.btn:hover{border-color:var(--ink-soft)}
+button:focus-visible,circle:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.legend{font-size:.88em;color:var(--ink-soft);line-height:1.7}
+.sw{display:inline-block;width:1.4em;height:3px;vertical-align:middle;margin-right:.4em}
+.note{color:var(--muted);font-size:.85em}
+i{font-style:italic}
+@media (max-width:900px){ main{grid-template-columns:1fr} body{font-size:17px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>The first-order optimality condition</h1>
+  <div class="spacer"></div>
+  <button class="theme" id="theme">Light / dark</button>
+</header>
+<p class="defn">Minimise a convex function <i>f</i> over the convex set <i>S</i> (blue). A point <i>x</i> ∈ <i>S</i> is optimal exactly when ∇<i>f</i>(<i>x</i>)<sup>T</sup>(<i>y</i> − <i>x</i>) ≥ 0 for every <i>y</i> ∈ <i>S</i>: no feasible direction goes downhill. Drag the black point around <i>S</i>. Drag the orange point to move the unconstrained minimiser of <i>f</i>.</p>
+<main>
+  <svg id="b" class="board" viewBox="0 0 560 480" role="img" aria-label="A convex polygon with level curves of a convex function, a chosen point, its negative gradient and the feasible directions"></svg>
+  <div class="side">
+    <div class="status" id="status" aria-live="polite"></div>
+    <button class="btn" id="opt">Jump to the optimum</button>
+    <div class="legend">
+      <div><span class="sw" style="background:var(--grad)"></span>−∇<i>f</i>(<i>x</i>), steepest descent</div>
+      <div><span class="sw" style="background:var(--dir)"></span>feasible directions towards the corners of <i>S</i></div>
+      <div><span class="sw" style="background:var(--bad);height:4px"></span>a feasible direction that goes downhill</div>
+      <div><span class="sw" style="background:var(--level)"></span>level curves of <i>f</i></div>
+    </div>
+    <p class="note">The worst direction is always towards a corner of <i>S</i>, because ∇<i>f</i>(<i>x</i>)<sup>T</sup>(<i>y</i> − <i>x</i>) is linear in <i>y</i>. At the optimum on the boundary, −∇<i>f</i>(<i>x</i>) points out of <i>S</i>. If the unconstrained minimiser lies inside <i>S</i>, the optimum is there and ∇<i>f</i> = 0.</p>
+  </div>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+$('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
+const NS='http://www.w3.org/2000/svg',svg=$('b'),W=560,H=480,XR=[-0.5,6.5],YR=[-0.5,5.5];
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W,sy=y=>H-(y-YR[0])/(YR[1]-YR[0])*H;
+const ux=X=>XR[0]+X/W*(XR[1]-XR[0]),uy=Y=>YR[0]+(H-Y)/H*(YR[1]-YR[0]);
+function el(p,t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;}
+const V=[[0.6,0.6],[3.4,0.4],[4.2,2.3],[2.4,4.0],[0.5,2.9]];
+const Q=[1,2.2];
+let c=[5.3,3.9],x=[1.6,1.6];
+const grad=p=>[Q[0]*(p[0]-c[0]),Q[1]*(p[1]-c[1])];
+const fval=p=>0.5*(Q[0]*(p[0]-c[0])**2+Q[1]*(p[1]-c[1])**2);
+function inside(p){for(let i=0;i<V.length;i++){const a=V[i],b=V[(i+1)%V.length];if((b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0])<-1e-12)return false;}return true;}
+function project(p){if(inside(p))return p;let best=null,bd=1e9;for(let i=0;i<V.length;i++){const a=V[i],b=V[(i+1)%V.length];const d=[b[0]-a[0],b[1]-a[1]];let t=((p[0]-a[0])*d[0]+(p[1]-a[1])*d[1])/(d[0]*d[0]+d[1]*d[1]);t=Math.max(0,Math.min(1,t));const q=[a[0]+t*d[0],a[1]+t*d[1]];const dd=Math.hypot(q[0]-p[0],q[1]-p[1]);if(dd<bd){bd=dd;best=q;}}return best;}
+function optimum(){let p=project(c);for(let k=0;k<4000;k++){const g=grad(p);p=project([p[0]-0.3*g[0],p[1]-0.3*g[1]]);}return p;}
+function draw(){svg.innerHTML='';
+  const defs=el(svg,'defs',{});[['ag','var(--grad)'],['ad','var(--dir)'],['ab','var(--bad)']].forEach(([id,col])=>{const m=el(defs,'marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});el(m,'path',{d:'M0 0L10 5L0 10z',fill:col});});
+  el(svg,'line',{x1:0,y1:sy(0),x2:W,y2:sy(0),stroke:'var(--axis)'});el(svg,'line',{x1:sx(0),y1:0,x2:sx(0),y2:H,stroke:'var(--axis)'});
+  el(svg,'polygon',{points:V.map(v=>sx(v[0])+','+sy(v[1])).join(' '),fill:'var(--set)',stroke:'var(--setline)','stroke-width':2});
+  [0.3,1,2,3.4,5.2,7.5].forEach(L=>{const a=Math.sqrt(2*L/Q[0]),b=Math.sqrt(2*L/Q[1]);el(svg,'ellipse',{cx:sx(c[0]),cy:sy(c[1]),rx:a/(XR[1]-XR[0])*W,ry:b/(YR[1]-YR[0])*H,fill:'none',stroke:'var(--level)','stroke-width':1,'stroke-dasharray':'5 4',opacity:.85});});
+  const g=grad(x),n=Math.hypot(g[0],g[1]);
+  const vals=V.map(v=>g[0]*(v[0]-x[0])+g[1]*(v[1]-x[1]));const worst=vals.indexOf(Math.min(...vals));const tol=1e-3*Math.max(1,n);
+  V.forEach((v,i)=>{const d=[v[0]-x[0],v[1]-x[1]];const len=Math.hypot(d[0],d[1]);if(len<1e-6)return;const L=Math.min(len,1.1);const bad=vals[i]<-tol&&i===worst;
+    el(svg,'line',{x1:sx(x[0]),y1:sy(x[1]),x2:sx(x[0]+L*d[0]/len),y2:sy(x[1]+L*d[1]/len),stroke:bad?'var(--bad)':'var(--dir)','stroke-width':bad?3.2:1.6,'marker-end':bad?'url(#ab)':'url(#ad)',opacity:bad?1:.8});});
+  if(n>1e-6){const L=1.2;el(svg,'line',{x1:sx(x[0]),y1:sy(x[1]),x2:sx(x[0]-L*g[0]/n),y2:sy(x[1]-L*g[1]/n),stroke:'var(--grad)','stroke-width':2.8,'marker-end':'url(#ag)'});}
+  const cp=el(svg,'circle',{cx:sx(c[0]),cy:sy(c[1]),r:7,fill:'var(--level)',tabindex:0,role:'button','aria-label':'Unconstrained minimiser, move with arrow keys','data-k':'c'});
+  const xp=el(svg,'circle',{cx:sx(x[0]),cy:sy(x[1]),r:9,fill:'var(--ink)',tabindex:0,role:'button','aria-label':'Point in S, move with arrow keys','data-k':'x'});
+  [cp,xp].forEach(e=>{e.style.cursor='grab';e.addEventListener('keydown',ev=>{const d={ArrowLeft:[-.05,0],ArrowRight:[.05,0],ArrowUp:[0,.05],ArrowDown:[0,-.05]}[ev.key];if(!d)return;ev.preventDefault();
+    if(e.dataset.k==='x')x=project([x[0]+d[0],x[1]+d[1]]);else c=[Math.max(XR[0],Math.min(XR[1],c[0]+d[0])),Math.max(YR[0],Math.min(YR[1],c[1]+d[1]))];draw();svg.querySelector('[data-k="'+e.dataset.k+'"]').focus();});});
+  const minv=vals[worst];const fmt=v=>(Math.abs(v)<5e-3?0:v).toFixed(2).replace('-','−');
+  $('status').innerHTML='<i>x</i> = ('+fmt(x[0])+', '+fmt(x[1])+'),  <i>f</i>(<i>x</i>) = '+fmt(fval(x))+'<br>∇<i>f</i>(<i>x</i>) = ('+fmt(g[0])+', '+fmt(g[1])+')<br>smallest ∇<i>f</i>(<i>x</i>)<sup>T</sup>(<i>y</i> − <i>x</i>) over <i>S</i>: '+fmt(minv)+'<br>'+
+    (minv>=-tol?'<span class="ok">The condition holds: x is optimal.</span>':'<span class="no">The red direction goes downhill: x is not optimal.</span>');}
+let dragK=null;
+svg.addEventListener('pointerdown',e=>{const t=e.target;if(t.dataset&&t.dataset.k){dragK=t.dataset.k;svg.setPointerCapture(e.pointerId);}});
+svg.addEventListener('pointermove',e=>{if(!dragK)return;const r=svg.getBoundingClientRect();const p=[ux((e.clientX-r.left)/r.width*W),uy((e.clientY-r.top)/r.height*H)];
+  if(dragK==='x')x=project(p);else c=[Math.max(XR[0],Math.min(XR[1],p[0])),Math.max(YR[0],Math.min(YR[1],p[1]))];draw();});
+svg.addEventListener('pointerup',()=>dragK=null);
+$('opt').onclick=()=>{x=optimum();draw();};
+draw();
+})();
+</script>
+</body>
+</html>
