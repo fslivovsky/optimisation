@@ -55,6 +55,8 @@ input[type=range]{width:100%;accent-color:var(--secant)}
 .cap{color:var(--muted);font-size:.85em;text-align:center;margin:.3em 0 0}
 i{font-style:italic}
 .chk{display:flex;gap:.4em;align-items:center;cursor:pointer}
+.btn{font:inherit;font-size:.88em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.2em .8em;cursor:pointer;align-self:flex-start}
+.btn:hover{border-color:var(--ink-soft)}
 @media (max-width:980px){ .pane,.pane2{grid-template-columns:1fr} body{font-size:17px} }
 </style>
 </head>
@@ -72,7 +74,7 @@ i{font-style:italic}
 <section class="pane" id="p1" role="tabpanel" aria-labelledby="t1">
   <div>
     <svg id="b1" class="board" viewBox="0 0 600 420" role="img" aria-label="Graph of a function with the tangent line at a chosen point"></svg>
-    <p class="cap">Drag the point along the curve. The green line is the tangent, with slope <i>f</i>′(<i>x</i>).</p>
+    <p class="cap">Drag the point along the curve. The green line is the tangent, with slope <i>f</i>′(<i>x</i>). Zoom with Ctrl or ⌘ and the mouse wheel.</p>
   </div>
   <div class="side">
     <label>Function <select id="f1">
@@ -82,6 +84,7 @@ i{font-style:italic}
       <option value="sin">f(x) = sin x  (not convex)</option>
     </select></label>
     <label class="chk"><input type="checkbox" id="sec"> Show a secant with step <i>h</i></label>
+    <button class="btn" id="rv1">Reset view</button>
     <label id="hwrap" hidden><span>h = <b id="hval">1.00</b></span><input type="range" id="h" min="0.02" max="2" step="0.01" value="1"></label>
     <div class="readout" id="r1" aria-live="polite"></div>
     <p class="note">For a convex function the tangent lies below the whole graph. Switch to a function that is not convex and look for points where the tangent cuts the graph. With the secant switched on, shrink <i>h</i> and watch the secant turn into the tangent.</p>
@@ -91,11 +94,11 @@ i{font-style:italic}
 <section class="pane pane2" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
   <div>
     <svg id="b2" class="board" viewBox="0 0 420 420" role="img" aria-label="Level curves of a function of two variables with the gradient at a chosen point"></svg>
-    <p class="cap">Level curves. Drag the point. Red: ∇<i>f</i>, green: −∇<i>f</i>.</p>
+    <p class="cap">Level curves. Drag the point. Red: ∇<i>f</i>, green: −∇<i>f</i>. Ctrl or ⌘ and the wheel to zoom.</p>
   </div>
   <div>
     <canvas id="c2" class="board" width="840" height="840" role="img" aria-label="Graph of the function as a surface with the tangent plane at the chosen point"></canvas>
-    <p class="cap">The graph with its tangent plane. Drag to rotate.</p>
+    <p class="cap">The graph with its tangent plane. Drag to rotate, Ctrl or ⌘ and the wheel to zoom.</p>
   </div>
   <div class="side">
     <label>Function <select id="f2">
@@ -103,6 +106,7 @@ i{font-style:italic}
       <option value="tilt">f(x) = x₁² + 2x₂² − x₁x₂</option>
       <option value="saddle">f(x) = x₁² − x₂²  (not convex)</option>
     </select></label>
+    <button class="btn" id="rv2">Reset view</button>
     <div class="readout" id="r2" aria-live="polite"></div>
     <p class="note">The tangent plane is <i>f</i>(<i>x</i>) + ∇<i>f</i>(<i>x</i>)<sup>T</sup>(<i>y</i> − <i>x</i>). For a convex function it lies below the whole graph. The gradient is perpendicular to the level curve through the point.</p>
   </div>
@@ -122,22 +126,22 @@ const fmt=v=>(Math.abs(v)<5e-4?0:v).toFixed(2).replace('-','−');
 /* ---------- one variable ---------- */
 const F1={sq:{f:x=>x*x,d:x=>2*x,xr:[-2.5,2.5],yr:[-1,6]},exp:{f:Math.exp,d:Math.exp,xr:[-2.5,2],yr:[-1,7]},
   quart:{f:x=>x**4/4-x*x,d:x=>x**3-2*x,xr:[-2.6,2.6],yr:[-1.6,2.4]},sin:{f:Math.sin,d:Math.cos,xr:[-4,4],yr:[-1.6,1.6]}};
-let g1='sq',x0=0.8;
+let g1='sq',x0=0.8;let V1={xr:F1.sq.xr.slice(),yr:F1.sq.yr.slice()};
 const b1=$('b1'),W1=600,H1=420;
-function draw1(){const F=F1[g1];const sx=x=>(x-F.xr[0])/(F.xr[1]-F.xr[0])*W1,sy=y=>H1-(y-F.yr[0])/(F.yr[1]-F.yr[0])*H1;
+function draw1(){const F=F1[g1];const XR=V1.xr,YR=V1.yr;const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W1,sy=y=>H1-(y-YR[0])/(YR[1]-YR[0])*H1;
   b1.innerHTML='';
   el(b1,'line',{x1:0,y1:sy(0),x2:W1,y2:sy(0),stroke:'var(--axis)'});el(b1,'line',{x1:sx(0),y1:0,x2:sx(0),y2:H1,stroke:'var(--axis)'});
-  let d='';for(let i=0;i<=300;i++){const x=F.xr[0]+(F.xr[1]-F.xr[0])*i/300;d+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(F.f(x)).toFixed(1);}
+  let d='';for(let i=0;i<=400;i++){const x=XR[0]+(XR[1]-XR[0])*i/400;d+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(F.f(x)).toFixed(1);}
   el(b1,'path',{d,fill:'none',stroke:'var(--curve)','stroke-width':2.5});
   const m=F.d(x0),y0=F.f(x0);
-  el(b1,'line',{x1:sx(F.xr[0]),y1:sy(y0+m*(F.xr[0]-x0)),x2:sx(F.xr[1]),y2:sy(y0+m*(F.xr[1]-x0)),stroke:'var(--tangent)','stroke-width':2});
+  el(b1,'line',{x1:sx(XR[0]),y1:sy(y0+m*(XR[0]-x0)),x2:sx(XR[1]),y2:sy(y0+m*(XR[1]-x0)),stroke:'var(--tangent)','stroke-width':2});
   let secTxt='';
   if($('sec').checked){const h=+$('h').value,y1=F.f(x0+h),ms=(y1-y0)/h;
-    el(b1,'line',{x1:sx(F.xr[0]),y1:sy(y0+ms*(F.xr[0]-x0)),x2:sx(F.xr[1]),y2:sy(y0+ms*(F.xr[1]-x0)),stroke:'var(--secant)','stroke-width':2,'stroke-dasharray':'6 4'});
+    el(b1,'line',{x1:sx(XR[0]),y1:sy(y0+ms*(XR[0]-x0)),x2:sx(XR[1]),y2:sy(y0+ms*(XR[1]-x0)),stroke:'var(--secant)','stroke-width':2,'stroke-dasharray':'6 4'});
     el(b1,'circle',{cx:sx(x0+h),cy:sy(y1),r:5,fill:'var(--secant)'});
     secTxt='<br><span class="k">secant slope</span> ['+'<i>f</i>(<i>x</i> + <i>h</i>) − <i>f</i>(<i>x</i>)] / <i>h</i> = '+fmt(ms);}
   const pt=el(b1,'circle',{cx:sx(x0),cy:sy(y0),r:8,fill:'var(--ink)',tabindex:0,role:'slider','aria-label':'Point on the curve','aria-valuenow':x0.toFixed(2)});pt.style.cursor='grab';
-  pt.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){x0=Math.min(F.xr[1]-0.05,Math.max(F.xr[0]+0.05,x0+(e.key==='ArrowRight'?0.05:-0.05)));draw1();b1.querySelector('[role=slider]').focus();e.preventDefault();}});
+  pt.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){x0=x0+(e.key==='ArrowRight'?0.05:-0.05);draw1();b1.querySelector('[role=slider]').focus();e.preventDefault();}});
   $('r1').innerHTML='<span class="k">x</span> = '+fmt(x0)+'<br><span class="k">f(x)</span> = '+fmt(y0)+'<br><span class="k">f′(x)</span> = '+fmt(m)+secTxt;
 }
 function svgX(svg,e,W){const r=svg.getBoundingClientRect();return (e.clientX-r.left)/r.width*W;}
@@ -145,8 +149,12 @@ let drag1=false;
 b1.addEventListener('pointerdown',e=>{drag1=true;b1.setPointerCapture(e.pointerId);move1(e);});
 b1.addEventListener('pointermove',e=>{if(drag1)move1(e);});
 b1.addEventListener('pointerup',()=>drag1=false);
-function move1(e){const F=F1[g1];x0=F.xr[0]+svgX(b1,e,W1)/W1*(F.xr[1]-F.xr[0]);x0=Math.min(F.xr[1]-0.05,Math.max(F.xr[0]+0.05,x0));draw1();}
-$('f1').onchange=e=>{g1=e.target.value;x0=g1==='sin'?1:0.8;draw1();};
+function move1(e){x0=V1.xr[0]+svgX(b1,e,W1)/W1*(V1.xr[1]-V1.xr[0]);draw1();}
+function reset1(){V1={xr:F1[g1].xr.slice(),yr:F1[g1].yr.slice()};}
+$('f1').onchange=e=>{g1=e.target.value;x0=g1==='sin'?1:0.8;reset1();draw1();};
+$('rv1').onclick=()=>{reset1();draw1();};
+b1.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const r=b1.getBoundingClientRect();const fx=(e.clientX-r.left)/r.width,fy=1-(e.clientY-r.top)/r.height;const k=Math.exp(e.deltaY*0.0015);
+  const cx=V1.xr[0]+fx*(V1.xr[1]-V1.xr[0]),cy=V1.yr[0]+fy*(V1.yr[1]-V1.yr[0]);V1={xr:[cx-(cx-V1.xr[0])*k,cx+(V1.xr[1]-cx)*k],yr:[cy-(cy-V1.yr[0])*k,cy+(V1.yr[1]-cy)*k]};draw1();},{passive:false});
 $('sec').onchange=()=>{$('hwrap').hidden=!$('sec').checked;draw1();};
 $('h').oninput=()=>{$('hval').textContent=(+$('h').value).toFixed(2);draw1();};
 
@@ -154,14 +162,14 @@ $('h').oninput=()=>{$('hval').textContent=(+$('h').value).toFixed(2);draw1();};
 const F2={bowl:{f:(a,b)=>a*a+2*b*b,g:(a,b)=>[2*a,4*b],H:'[[2, 0], [0, 4]]'},
   tilt:{f:(a,b)=>a*a+2*b*b-a*b,g:(a,b)=>[2*a-b,4*b-a],H:'[[2, −1], [−1, 4]]'},
   saddle:{f:(a,b)=>a*a-b*b,g:(a,b)=>[2*a,-2*b],H:'[[2, 0], [0, −2]]'}};
-let g2='bowl',p=[0.9,0.6],az=-0.9,elv=0.55;const R=2;
+let g2='bowl',p=[0.9,0.6],az=-0.9,elv=0.55,zoom3=1;const R=2;let V2={c:[0,0],h:R};
 const b2=$('b2'),W2=420;const cv=$('c2'),ctx=cv.getContext('2d');
-function contourSegs(f,level,n){const segs=[],h=2*R/n;const v=(i,j)=>f(-R+i*h,-R+j*h)-level;
+function contourSegs(f,level,n){const segs=[],h=2*V2.h/n,X0=V2.c[0]-V2.h,Y0=V2.c[1]-V2.h;const v=(i,j)=>f(X0+i*h,Y0+j*h)-level;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){const c=[v(i,j),v(i+1,j),v(i+1,j+1),v(i,j+1)];const P=[[i,j],[i+1,j],[i+1,j+1],[i,j+1]];const pts=[];
-    for(let k=0;k<4;k++){const a=c[k],b=c[(k+1)%4];if((a<0)!==(b<0)){const t=a/(a-b);pts.push([-R+(P[k][0]+t*(P[(k+1)%4][0]-P[k][0]))*h,-R+(P[k][1]+t*(P[(k+1)%4][1]-P[k][1]))*h]);}}
+    for(let k=0;k<4;k++){const a=c[k],b=c[(k+1)%4];if((a<0)!==(b<0)){const t=a/(a-b);pts.push([X0+(P[k][0]+t*(P[(k+1)%4][0]-P[k][0]))*h,Y0+(P[k][1]+t*(P[(k+1)%4][1]-P[k][1]))*h]);}}
     if(pts.length===2)segs.push(pts);else if(pts.length===4){segs.push([pts[0],pts[1]]);segs.push([pts[2],pts[3]]);}}
   return segs;}
-function draw2(){const F=F2[g2];const sx=x=>(x+R)/(2*R)*W2,sy=y=>W2-(y+R)/(2*R)*W2;b2.innerHTML='';
+function draw2(){const F=F2[g2];const sx=x=>(x-V2.c[0]+V2.h)/(2*V2.h)*W2,sy=y=>W2-(y-V2.c[1]+V2.h)/(2*V2.h)*W2;b2.innerHTML='';
   el(b2,'line',{x1:0,y1:sy(0),x2:W2,y2:sy(0),stroke:'var(--axis)'});el(b2,'line',{x1:sx(0),y1:0,x2:sx(0),y2:W2,stroke:'var(--axis)'});
   const levels=g2==='saddle'?[-3,-2,-1,-0.4,0.4,1,2,3]:[0.25,0.75,1.5,2.5,4,6];
   levels.forEach(L=>contourSegs(F.f,L,60).forEach(s=>el(b2,'line',{x1:sx(s[0][0]),y1:sy(s[0][1]),x2:sx(s[1][0]),y2:sy(s[1][1]),stroke:'var(--curve)','stroke-width':1,opacity:.55})));
@@ -169,7 +177,7 @@ function draw2(){const F=F2[g2];const sx=x=>(x+R)/(2*R)*W2,sy=y=>W2-(y+R)/(2*R)*
   const g=F.g(p[0],p[1]),n=Math.hypot(g[0],g[1]);
   const mk=(id,col)=>{const m=el(el(b2,'defs',{}),'marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});el(m,'path',{d:'M0 0L10 5L0 10z',fill:col});};
   mk('ag','var(--grad)');mk('at','var(--tangent)');
-  if(n>1e-6){const L=0.8;el(b2,'line',{x1:sx(p[0]),y1:sy(p[1]),x2:sx(p[0]+L*g[0]/n),y2:sy(p[1]+L*g[1]/n),stroke:'var(--grad)','stroke-width':2.5,'marker-end':'url(#ag)'});
+  if(n>1e-6){const L=0.4*V2.h;el(b2,'line',{x1:sx(p[0]),y1:sy(p[1]),x2:sx(p[0]+L*g[0]/n),y2:sy(p[1]+L*g[1]/n),stroke:'var(--grad)','stroke-width':2.5,'marker-end':'url(#ag)'});
     el(b2,'line',{x1:sx(p[0]),y1:sy(p[1]),x2:sx(p[0]-L*g[0]/n),y2:sy(p[1]-L*g[1]/n),stroke:'var(--tangent)','stroke-width':2.5,'marker-end':'url(#at)'});}
   const pt=el(b2,'circle',{cx:sx(p[0]),cy:sy(p[1]),r:8,fill:'var(--ink)',tabindex:0,role:'button','aria-label':'Point, move with arrow keys'});pt.style.cursor='grab';
   pt.addEventListener('keydown',e=>{const d={ArrowLeft:[-.05,0],ArrowRight:[.05,0],ArrowUp:[0,.05],ArrowDown:[0,-.05]}[e.key];if(d){p=[Math.max(-R+.05,Math.min(R-.05,p[0]+d[0])),Math.max(-R+.05,Math.min(R-.05,p[1]+d[1]))];draw2();b2.querySelector('[role=button]').focus();e.preventDefault();}});
@@ -178,7 +186,7 @@ function draw2(){const F=F2[g2];const sx=x=>(x+R)/(2*R)*W2,sy=y=>W2-(y+R)/(2*R)*
 function draw3d(){const F=F2[g2];const Wc=cv.width;ctx.clearRect(0,0,Wc,Wc);
   const fv=g2==='saddle'?[-4,4]:[0,12];const zs=1.15/(fv[1]-fv[0]);
   const proj=(x,y,z)=>{const zz=(z-(fv[0]+fv[1])/2)*zs*R;const c=Math.cos(az),s=Math.sin(az);const X=c*x-s*y,Y=s*x+c*y;const ce=Math.cos(elv),se=Math.sin(elv);
-    const sc=Wc/(2.2*R*1.55);return [Wc/2+X*sc,Wc/2-(zz*ce-Y*se)*sc*1.0];};
+    const sc=zoom3*Wc/(2.2*R*1.55);return [Wc/2+X*sc,Wc/2-(zz*ce-Y*se)*sc*1.0];};
   const clamp=z=>Math.max(fv[0]-1,Math.min(fv[1]+1,z));
   ctx.lineWidth=1.2;ctx.strokeStyle=css('--surf');ctx.globalAlpha=.55;const N=20;
   for(let i=0;i<=N;i++){ctx.beginPath();for(let j=0;j<=40;j++){const x=-R+2*R*i/N,y=-R+2*R*j/40;const q=proj(x,y,clamp(F.f(x,y)));j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}ctx.stroke();
@@ -191,12 +199,16 @@ function draw3d(){const F=F2[g2];const Wc=cv.width;ctx.clearRect(0,0,Wc,Wc);
 let drag2=false;
 b2.addEventListener('pointerdown',e=>{drag2=true;b2.setPointerCapture(e.pointerId);move2(e);});
 b2.addEventListener('pointermove',e=>{if(drag2)move2(e);});b2.addEventListener('pointerup',()=>drag2=false);
-function move2(e){const r=b2.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*2*R-R,y=R-(e.clientY-r.top)/r.height*2*R;p=[Math.max(-R+.05,Math.min(R-.05,x)),Math.max(-R+.05,Math.min(R-.05,y))];draw2();}
+function move2(e){const r=b2.getBoundingClientRect();const x=V2.c[0]-V2.h+(e.clientX-r.left)/r.width*2*V2.h,y=V2.c[1]+V2.h-(e.clientY-r.top)/r.height*2*V2.h;p=[Math.max(-R+.05,Math.min(R-.05,x)),Math.max(-R+.05,Math.min(R-.05,y))];draw2();}
 let rot=null;
 cv.addEventListener('pointerdown',e=>{rot=[e.clientX,e.clientY,az,elv];cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';});
 cv.addEventListener('pointermove',e=>{if(!rot)return;az=rot[2]+(e.clientX-rot[0])*0.01;elv=Math.max(0.05,Math.min(1.45,rot[3]+(e.clientY-rot[1])*0.01));draw3d();});
 cv.addEventListener('pointerup',()=>{rot=null;cv.style.cursor='grab';});
 $('f2').onchange=e=>{g2=e.target.value;draw2();};
+$('rv2').onclick=()=>{V2={c:[0,0],h:R};zoom3=1;az=-0.9;elv=0.55;draw2();};
+b2.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const r=b2.getBoundingClientRect();const fx=(e.clientX-r.left)/r.width,fy=1-(e.clientY-r.top)/r.height;const k=Math.exp(e.deltaY*0.0015);
+  const cx=V2.c[0]-V2.h+fx*2*V2.h,cy=V2.c[1]-V2.h+fy*2*V2.h;const nh=Math.max(0.05,Math.min(20,V2.h*k));const kk=nh/V2.h;V2={c:[cx+(V2.c[0]-cx)*kk,cy+(V2.c[1]-cy)*kk],h:nh};draw2();},{passive:false});
+cv.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();zoom3=Math.max(0.3,Math.min(5,zoom3*Math.exp(-e.deltaY*0.0015)));draw3d();},{passive:false});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw2);
 draw1();
 })();
