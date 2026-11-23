@@ -47,6 +47,9 @@ input[type=range]{width:100%;accent-color:var(--path)}
 .row{display:flex;gap:.5em;flex-wrap:wrap}
 .btn{font:inherit;font-size:.88em;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.2em .8em;cursor:pointer}
 .btn:hover{border-color:var(--ink-soft)}
+.btn.primary{border-color:var(--path);box-shadow:inset 0 0 0 1px var(--path)}
+.run{padding-top:.2em}
+svg.board.small{margin-top:.6em}
 .readout{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:.6em .8em;font-variant-numeric:tabular-nums;line-height:1.6}
 .k{color:var(--muted)} .good{color:var(--good);font-weight:500} .bad{color:var(--bad);font-weight:500} .acc{color:var(--path);font-weight:500}
 .note{color:var(--muted);font-size:.85em}
@@ -69,13 +72,16 @@ i{font-style:italic}
 <section class="pane" id="p1" role="tabpanel" aria-labelledby="t1">
   <div>
     <svg id="b1" class="board" viewBox="0 0 600 420" role="img" aria-label="A parabola with the iterates of gradient descent"></svg>
-    <p class="cap">Gradient descent on <i>f</i>(<i>x</i>) = (<i>a</i>/2)<i>x</i>². Drag the starting point. Zoom with Ctrl or ⌘ and the mouse wheel.</p>
+    <p class="cap">Gradient descent on <i>f</i>(<i>x</i>) = (<i>a</i>/2)<i>x</i>². Drag the starting point <i>x</i><sup>(0)</sup>, then press <i>Step</i> or <i>Run</i>. Zoom with Ctrl or ⌘ and the mouse wheel.</p>
+    <svg id="e1" class="board small" viewBox="0 0 600 150" role="img" aria-label="The error f of the iterates on a logarithmic scale"></svg>
+    <p class="cap"><i>f</i>(<i>x</i><sup>(<i>k</i>)</sup>) − <i>f</i>* against <i>k</i>, on a logarithmic scale. A straight line means a constant factor per step.</p>
   </div>
   <div class="side">
     <div class="ctl"><label><span>curvature <i>a</i></span><b id="av"></b></label><input type="range" id="a" min="0.2" max="10" step="0.1" value="2"></div>
     <div class="ctl"><label><span>step size <i>t</i></span><b id="tv"></b></label><input type="range" id="t" min="0.01" max="2" step="0.01" value="0.3">
       <div class="ticks" id="ticks"></div></div>
     <div class="row"><button class="btn" id="best">t = 1/a</button><button class="btn" id="edge">t = 2/a</button><button class="btn" id="rv1">Reset view</button></div>
+    <div class="row run"><button class="btn primary" id="step1">Step</button><button class="btn" id="run1">Run</button><button class="btn" id="restart1">Restart</button></div>
     <div class="readout" id="r1" aria-live="polite"></div>
     <p class="note">Each step multiplies <i>x</i> by 1 − <i>ta</i>. The iterates converge when this factor lies strictly between −1 and 1, that is, for 0 &lt; <i>t</i> &lt; 2/<i>a</i>. Increase <i>a</i> with <i>t</i> fixed and watch the same step become too large.</p>
   </div>
@@ -84,13 +90,16 @@ i{font-style:italic}
 <section class="pane" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
   <div>
     <svg id="b2" class="board" viewBox="0 0 520 420" role="img" aria-label="Level curves of a function with two curvatures, and the path of gradient descent"></svg>
-    <p class="cap"><i>f</i>(<i>x</i>) = (<i>a</i>₁/2)<i>x</i>₁² + (<i>a</i>₂/2)<i>x</i>₂². Drag the starting point. Zoom with Ctrl or ⌘ and the mouse wheel.</p>
+    <p class="cap"><i>f</i>(<i>x</i>) = (<i>a</i>₁/2)<i>x</i>₁² + (<i>a</i>₂/2)<i>x</i>₂². Drag the starting point <i>x</i><sup>(0)</sup>, then press <i>Step</i> or <i>Run</i>. Zoom with Ctrl or ⌘ and the mouse wheel.</p>
+    <svg id="e2" class="board small" viewBox="0 0 520 150" role="img" aria-label="The error f of the iterates on a logarithmic scale"></svg>
+    <p class="cap"><i>f</i>(<i>x</i><sup>(<i>k</i>)</sup>) − <i>f</i>* against <i>k</i>, on a logarithmic scale.</p>
   </div>
   <div class="side">
     <div class="ctl"><label><span>curvature <i>a</i>₁</span><b id="a1v"></b></label><input type="range" id="a1" min="0.2" max="10" step="0.1" value="1"></div>
     <div class="ctl"><label><span>curvature <i>a</i>₂</span><b id="a2v"></b></label><input type="range" id="a2" min="0.2" max="10" step="0.1" value="8"></div>
     <div class="ctl"><label><span>step size <i>t</i></span><b id="t2v"></b></label><input type="range" id="tt" min="0.01" max="2" step="0.01" value="0.2"></div>
     <div class="row"><button class="btn" id="bestL">t = 1/L</button><button class="btn" id="rv2">Reset view</button></div>
+    <div class="row run"><button class="btn primary" id="step2">Step</button><button class="btn" id="run2">Run</button><button class="btn" id="restart2">Restart</button></div>
     <div class="readout" id="r2" aria-live="polite"></div>
     <p class="note">Each coordinate behaves like its own parabola, with factor 1 − <i>t a</i>ᵢ. One step size has to work for both, so the larger curvature <i>L</i> = max(<i>a</i>₁, <i>a</i>₂) limits <i>t</i>, and the flatter direction converges slowly. The ratio <i>L</i>/μ of the curvatures is the condition number.</p>
   </div>
@@ -101,7 +110,7 @@ i{font-style:italic}
 'use strict';
 const $=id=>document.getElementById(id);
 $('theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark';};
-[$('t1'),$('t2')].forEach((b,i)=>b.onclick=()=>{$('t1').setAttribute('aria-selected',i===0);$('t2').setAttribute('aria-selected',i===1);$('p1').hidden=i!==0;$('p2').hidden=i!==1;i?draw2():draw1();});
+[$('t1'),$('t2')].forEach((b,i)=>b.onclick=()=>{if(typeof stop1==='function'){stop1();stop2();}$('t1').setAttribute('aria-selected',i===0);$('t2').setAttribute('aria-selected',i===1);$('p1').hidden=i!==0;$('p2').hidden=i!==1;i?draw2():draw1();});
 const NS='http://www.w3.org/2000/svg';
 function el(p,t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;}
 const fmt=(v,d=2)=>(Math.abs(v)<5e-4?0:v).toFixed(d).replace('-','−');
@@ -110,57 +119,81 @@ function zoomable(svg,get,set,draw,W,H){svg.addEventListener('wheel',e=>{if(!(e.
   const cx=v.xr[0]+fx*(v.xr[1]-v.xr[0]),cy=v.yr[0]+fy*(v.yr[1]-v.yr[0]);set({xr:[cx-(cx-v.xr[0])*k,cx+(v.xr[1]-cx)*k],yr:[cy-(cy-v.yr[0])*k,cy+(v.yr[1]-cy)*k]});draw();},{passive:false});}
 
 /* ---------- one curvature ---------- */
-const b1=$('b1'),W1=600,H1=420;let x0=2.2;const V1d={xr:[-3.2,3.2],yr:[-0.6,7.5]};let V1=JSON.parse(JSON.stringify(V1d));
+const b1=$('b1'),W1=600,H1=420;let x0=2.2,K1=0,timer1=null;const V1d={xr:[-3.2,3.2],yr:[-0.6,7.5]};let V1=JSON.parse(JSON.stringify(V1d));
+function iters1(){const a=+$('a').value,t=+$('t').value,q=1-t*a;const pts=[x0];for(let k=0;k<60;k++)pts.push(pts[pts.length-1]*q);return pts;}
+function logPlot(svg,W,vals,kmax,col){const H=150;svg.innerHTML='';const lo=-12,hi=4;const n=Math.max(10,kmax);
+  const X=k=>40+k/n*(W-55),Y=v=>{const l=Math.log10(Math.max(v,1e-12));return 10+(hi-Math.max(lo,Math.min(hi,l)))/(hi-lo)*(H-30);};
+  el(svg,'line',{x1:40,y1:H-20,x2:W-10,y2:H-20,stroke:'var(--axis)'});el(svg,'line',{x1:40,y1:10,x2:40,y2:H-20,stroke:'var(--axis)'});
+  [4,0,-4,-8,-12].forEach(e=>{el(svg,'text',{x:34,y:Y(10**e)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'}).textContent='1e'+e;});
+  el(svg,'text',{x:W-12,y:H-6,'text-anchor':'end','font-size':11,fill:'var(--muted)'}).textContent='k';
+  let d='';vals.slice(0,kmax+1).forEach((v,k)=>{d+=(k?'L':'M')+X(k).toFixed(1)+' '+Y(v).toFixed(1);});if(d)el(svg,'path',{d,fill:'none',stroke:col,'stroke-width':2});
+  vals.slice(0,kmax+1).forEach((v,k)=>el(svg,'circle',{cx:X(k),cy:Y(v),r:3,fill:col}));}
 function draw1(){const a=+$('a').value,t=+$('t').value;$('av').textContent=a.toFixed(1);$('tv').textContent=t.toFixed(2);
   const XR=V1.xr,YR=V1.yr;const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W1,sy=y=>H1-(y-YR[0])/(YR[1]-YR[0])*H1;const f=x=>a/2*x*x;
   b1.innerHTML='';marker(b1,'ap','var(--path)');
   el(b1,'line',{x1:0,y1:sy(0),x2:W1,y2:sy(0),stroke:'var(--axis)'});el(b1,'line',{x1:sx(0),y1:0,x2:sx(0),y2:H1,stroke:'var(--axis)'});
   let d='';for(let i=0;i<=400;i++){const x=XR[0]+(XR[1]-XR[0])*i/400;d+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(f(x)).toFixed(1);}
   el(b1,'path',{d,fill:'none',stroke:'var(--curve)','stroke-width':2.5});
-  const q=1-t*a;const pts=[x0];for(let k=0;k<14;k++){pts.push(pts[pts.length-1]*q);}
-  const lim=1e3;for(let k=0;k<pts.length-1;k++){const u=pts[k],v=pts[k+1];if(Math.abs(v)>lim)break;el(b1,'line',{x1:sx(u),y1:sy(f(u)),x2:sx(v),y2:sy(f(v)),stroke:'var(--path)','stroke-width':2,'marker-end':'url(#ap)',opacity:Math.max(.25,1-k*0.06)});}
-  pts.slice(1).forEach((u,k)=>{if(Math.abs(u)<lim)el(b1,'circle',{cx:sx(u),cy:sy(f(u)),r:3.5,fill:'var(--path)',opacity:Math.max(.3,1-k*0.06)});});
+  const q=1-t*a;const pts=iters1();const lim=1e6;
+  for(let k=0;k<K1;k++){const u=pts[k],v=pts[k+1];if(Math.abs(v)>lim)break;const recent=k===K1-1;el(b1,'line',{x1:sx(u),y1:sy(f(u)),x2:sx(v),y2:sy(f(v)),stroke:'var(--path)','stroke-width':recent?2.8:1.6,'marker-end':'url(#ap)',opacity:recent?1:.55});}
+  for(let k=1;k<=K1;k++){const u=pts[k];if(Math.abs(u)<lim)el(b1,'circle',{cx:sx(u),cy:sy(f(u)),r:k===K1?6:3.5,fill:'var(--path)',opacity:k===K1?1:.55});}
   const p=el(b1,'circle',{cx:sx(x0),cy:sy(f(x0)),r:8,fill:'var(--ink)',tabindex:0,role:'slider','aria-label':'Starting point','aria-valuenow':x0.toFixed(2)});p.style.cursor='grab';
-  p.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){x0+=e.key==='ArrowRight'?0.05:-0.05;draw1();b1.querySelector('[role=slider]').focus();e.preventDefault();}});
+  p.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){x0+=e.key==='ArrowRight'?0.05:-0.05;K1=0;stop1();draw1();b1.querySelector('[role=slider]').focus();e.preventDefault();}});
   let regime,cls;
   if(Math.abs(q)<1e-9){regime='t = 1/a: the minimum is reached in one step.';cls='good';}
   else if(q>0&&q<1){regime='0 < t < 1/a: converges from one side.';cls='good';}
   else if(q<0&&q>-1){regime='1/a < t < 2/a: converges, jumping from side to side.';cls='acc';}
   else if(Math.abs(q+1)<1e-9){regime='t = 2/a: bounces between x and −x for ever.';cls='bad';}
   else {regime='t > 2/a: every step overshoots further. Diverges.';cls='bad';}
-  $('r1').innerHTML='<span class="k">factor</span> 1 − <i>ta</i> = '+fmt(q)+'<br><span class="k">1/a</span> = '+fmt(1/a)+',  <span class="k">2/a</span> = '+fmt(2/a)+'<br><span class="k">iterates</span> '+pts.slice(0,5).map(v=>Math.abs(v)<1e4?fmt(v):'…').join(', ')+', …<br><span class="'+cls+'">'+regime+'</span>';
+  const xk=pts[K1];
+  $('r1').innerHTML='<span class="k">step</span> <i>k</i> = '+K1+'<br><span class="k">x<sup>(k)</sup></span> = '+(Math.abs(xk)<1e5?fmt(xk,3):'…')+',  <span class="k">f(x<sup>(k)</sup>)</span> = '+(Math.abs(xk)<1e5?fmt(f(xk),3):'…')+
+    '<br><span class="k">factor</span> 1 − <i>ta</i> = '+fmt(q)+',  <span class="k">1/a</span> = '+fmt(1/a)+',  <span class="k">2/a</span> = '+fmt(2/a)+'<br><span class="'+cls+'">'+regime+'</span>';
+  logPlot($('e1'),600,pts.map(f),K1,'var(--path)');
   const tk=$('ticks');tk.innerHTML='';const tmin=+$('t').min,tmax=+$('t').max;[[1/a,'1/a'],[2/a,'2/a']].forEach(([v,l])=>{if(v>=tmin&&v<=tmax){const s=document.createElement('span');s.style.left=((v-tmin)/(tmax-tmin)*100)+'%';s.textContent='▲ '+l;tk.appendChild(s);}});}
+function stop1(){if(timer1){clearInterval(timer1);timer1=null;$('run1').textContent='Run';}}
+function step1(){const pts=iters1();if(K1>=40||Math.abs(pts[K1+1])>1e6){stop1();return;}K1++;draw1();}
+$('step1').onclick=()=>{stop1();step1();};
+$('run1').onclick=()=>{if(timer1){stop1();return;}$('run1').textContent='Pause';timer1=setInterval(step1,450);};
+$('restart1').onclick=()=>{stop1();K1=0;draw1();};
 let drag1=false;
 b1.addEventListener('pointerdown',e=>{if(e.target.getAttribute('role')!=='slider'&&e.target.tagName!=='svg')return;drag1=true;b1.setPointerCapture(e.pointerId);mv1(e);});
 b1.addEventListener('pointermove',e=>{if(drag1)mv1(e);});b1.addEventListener('pointerup',()=>drag1=false);
-function mv1(e){const r=b1.getBoundingClientRect();x0=V1.xr[0]+(e.clientX-r.left)/r.width*(V1.xr[1]-V1.xr[0]);draw1();}
-['a','t'].forEach(id=>$(id).oninput=draw1);
-$('best').onclick=()=>{$('t').value=Math.min(2,1/(+$('a').value)).toFixed(2);draw1();};
-$('edge').onclick=()=>{$('t').value=Math.min(2,2/(+$('a').value)).toFixed(2);draw1();};
+function mv1(e){const r=b1.getBoundingClientRect();x0=V1.xr[0]+(e.clientX-r.left)/r.width*(V1.xr[1]-V1.xr[0]);K1=0;stop1();draw1();}
+['a','t'].forEach(id=>$(id).oninput=()=>{K1=0;stop1();draw1();});
+$('best').onclick=()=>{$('t').value=Math.min(2,1/(+$('a').value)).toFixed(2);K1=0;stop1();draw1();};
+$('edge').onclick=()=>{$('t').value=Math.min(2,2/(+$('a').value)).toFixed(2);K1=0;stop1();draw1();};
 $('rv1').onclick=()=>{V1=JSON.parse(JSON.stringify(V1d));draw1();};
 zoomable(b1,()=>V1,v=>V1=v,draw1,W1,H1);
 
 /* ---------- two curvatures ---------- */
-const b2=$('b2'),W2=520,H2=420;let s0=[2.4,1.6];const V2d={xr:[-3.25,3.25],yr:[-2.625,2.625]};let V2=JSON.parse(JSON.stringify(V2d));
+const b2=$('b2'),W2=520,H2=420;let s0=[2.4,1.6],K2=0,timer2=null;const V2d={xr:[-3.25,3.25],yr:[-2.625,2.625]};let V2=JSON.parse(JSON.stringify(V2d));
+function iters2(){const a1=+$('a1').value,a2=+$('a2').value,t=+$('tt').value,q1=1-t*a1,q2=1-t*a2;let p=s0.slice();const pts=[p];for(let k=0;k<200;k++){p=[p[0]*q1,p[1]*q2];pts.push(p);}return pts;}
 function draw2(){const a1=+$('a1').value,a2=+$('a2').value,t=+$('tt').value;$('a1v').textContent=a1.toFixed(1);$('a2v').textContent=a2.toFixed(1);$('t2v').textContent=t.toFixed(2);
   const XR=V2.xr,YR=V2.yr;const sx=x=>(x-XR[0])/(XR[1]-XR[0])*W2,sy=y=>H2-(y-YR[0])/(YR[1]-YR[0])*H2;const f=(x,y)=>a1/2*x*x+a2/2*y*y;
   b2.innerHTML='';marker(b2,'ap2','var(--path)');
   el(b2,'line',{x1:0,y1:sy(0),x2:W2,y2:sy(0),stroke:'var(--axis)'});el(b2,'line',{x1:sx(0),y1:0,x2:sx(0),y2:H2,stroke:'var(--axis)'});
   const f0=f(s0[0],s0[1]);[1,0.6,0.3,0.12,0.04,0.01].forEach(r=>{const L=f0*r;if(L<=0)return;const rx=Math.sqrt(2*L/a1),ry=Math.sqrt(2*L/a2);el(b2,'ellipse',{cx:sx(0),cy:sy(0),rx:rx/(XR[1]-XR[0])*W2,ry:ry/(YR[1]-YR[0])*H2,fill:'none',stroke:'var(--level)','stroke-width':1.2});});
-  const q1=1-t*a1,q2=1-t*a2;let p=s0.slice();const pts=[p];for(let k=0;k<40;k++){p=[p[0]*q1,p[1]*q2];pts.push(p);}
-  for(let k=0;k<pts.length-1;k++){const u=pts[k],v=pts[k+1];if(Math.abs(v[0])>1e3||Math.abs(v[1])>1e3)break;el(b2,'line',{x1:sx(u[0]),y1:sy(u[1]),x2:sx(v[0]),y2:sy(v[1]),stroke:'var(--path)','stroke-width':1.8,'marker-end':k<12?'url(#ap2)':'',opacity:Math.max(.3,1-k*0.04)});}
+  const q1=1-t*a1,q2=1-t*a2;const pts=iters2();
+  for(let k=0;k<K2;k++){const u=pts[k],v=pts[k+1];if(Math.abs(v[0])>1e6||Math.abs(v[1])>1e6)break;const recent=k===K2-1;el(b2,'line',{x1:sx(u[0]),y1:sy(u[1]),x2:sx(v[0]),y2:sy(v[1]),stroke:'var(--path)','stroke-width':recent?2.6:1.5,'marker-end':recent?'url(#ap2)':'',opacity:recent?1:.6});}
+  if(K2>0){const v=pts[K2];if(Math.abs(v[0])<1e6&&Math.abs(v[1])<1e6)el(b2,'circle',{cx:sx(v[0]),cy:sy(v[1]),r:6,fill:'var(--path)'});}
   const c=el(b2,'circle',{cx:sx(s0[0]),cy:sy(s0[1]),r:8,fill:'var(--ink)',tabindex:0,role:'button','aria-label':'Starting point, move with arrow keys'});c.style.cursor='grab';
-  c.addEventListener('keydown',e=>{const d={ArrowLeft:[-.05,0],ArrowRight:[.05,0],ArrowUp:[0,.05],ArrowDown:[0,-.05]}[e.key];if(d){s0=[s0[0]+d[0],s0[1]+d[1]];draw2();b2.querySelector('[role=button]').focus();e.preventDefault();}});
-  const L=Math.max(a1,a2),mu=Math.min(a1,a2);const ok=Math.abs(q1)<1&&Math.abs(q2)<1;
-  const slow=Math.max(Math.abs(q1),Math.abs(q2));let n=0;if(ok&&slow>0){n=Math.ceil(Math.log(1e-3)/Math.log(slow));}
-  $('r2').innerHTML='<span class="k">factors</span> 1 − <i>t a</i>₁ = '+fmt(q1)+',  1 − <i>t a</i>₂ = '+fmt(q2)+'<br><span class="k">L</span> = '+fmt(L,1)+',  <span class="k">μ</span> = '+fmt(mu,1)+',  <span class="k">L/μ</span> = '+fmt(L/mu,1)+',  <span class="k">2/L</span> = '+fmt(2/L)+'<br>'+
-    (ok?'<span class="good">Converges.</span> Steps to shrink the error 1000-fold: '+(slow===0?'1':n)+'.':'<span class="bad">t ≥ 2/L: the steeper direction diverges.</span>');}
+  c.addEventListener('keydown',e=>{const d={ArrowLeft:[-.05,0],ArrowRight:[.05,0],ArrowUp:[0,.05],ArrowDown:[0,-.05]}[e.key];if(d){s0=[s0[0]+d[0],s0[1]+d[1]];K2=0;stop2();draw2();b2.querySelector('[role=button]').focus();e.preventDefault();}});
+  const L=Math.max(a1,a2),mu=Math.min(a1,a2);const ok=Math.abs(q1)<1&&Math.abs(q2)<1;const v=pts[K2];
+  $('r2').innerHTML='<span class="k">step</span> <i>k</i> = '+K2+',  <span class="k">f(x<sup>(k)</sup>)</span> = '+(Math.abs(v[0])<1e5&&Math.abs(v[1])<1e5?fmt(f(v[0],v[1]),4):'…')+
+    '<br><span class="k">factors</span> 1 − <i>t a</i>₁ = '+fmt(q1)+',  1 − <i>t a</i>₂ = '+fmt(q2)+'<br><span class="k">L</span> = '+fmt(L,1)+',  <span class="k">μ</span> = '+fmt(mu,1)+',  <span class="k">L/μ</span> = '+fmt(L/mu,1)+',  <span class="k">2/L</span> = '+fmt(2/L)+'<br>'+
+    (ok?'<span class="good">Converges.</span> The flatter direction is the slow one.':'<span class="bad">t ≥ 2/L: the steeper direction diverges.</span>');
+  logPlot($('e2'),520,pts.map(p=>f(p[0],p[1])),K2,'var(--path)');}
+function stop2(){if(timer2){clearInterval(timer2);timer2=null;$('run2').textContent='Run';}}
+function step2(){const pts=iters2();const v=pts[K2+1];if(K2>=150||Math.abs(v[0])>1e6||Math.abs(v[1])>1e6){stop2();return;}K2++;draw2();}
+$('step2').onclick=()=>{stop2();step2();};
+$('run2').onclick=()=>{if(timer2){stop2();return;}$('run2').textContent='Pause';timer2=setInterval(step2,300);};
+$('restart2').onclick=()=>{stop2();K2=0;draw2();};
 let drag2=false;
 b2.addEventListener('pointerdown',e=>{if(e.target.getAttribute('role')!=='button'&&e.target.tagName!=='svg')return;drag2=true;b2.setPointerCapture(e.pointerId);mv2(e);});
 b2.addEventListener('pointermove',e=>{if(drag2)mv2(e);});b2.addEventListener('pointerup',()=>drag2=false);
-function mv2(e){const r=b2.getBoundingClientRect();s0=[V2.xr[0]+(e.clientX-r.left)/r.width*(V2.xr[1]-V2.xr[0]),V2.yr[1]-(e.clientY-r.top)/r.height*(V2.yr[1]-V2.yr[0])];draw2();}
-['a1','a2','tt'].forEach(id=>$(id).oninput=draw2);
-$('bestL').onclick=()=>{$('tt').value=(1/Math.max(+$('a1').value,+$('a2').value)).toFixed(2);draw2();};
+function mv2(e){const r=b2.getBoundingClientRect();s0=[V2.xr[0]+(e.clientX-r.left)/r.width*(V2.xr[1]-V2.xr[0]),V2.yr[1]-(e.clientY-r.top)/r.height*(V2.yr[1]-V2.yr[0])];K2=0;stop2();draw2();}
+['a1','a2','tt'].forEach(id=>$(id).oninput=()=>{K2=0;stop2();draw2();});
+$('bestL').onclick=()=>{$('tt').value=(1/Math.max(+$('a1').value,+$('a2').value)).toFixed(2);K2=0;stop2();draw2();};
 $('rv2').onclick=()=>{V2=JSON.parse(JSON.stringify(V2d));draw2();};
 zoomable(b2,()=>V2,v=>V2=v,draw2,W2,H2);
 draw1();
